@@ -457,7 +457,7 @@ async function loadPdf(team, onProg) {
 let S = store.get('jd_sess');          // { no, code }
 let D = null;                          // 서버에서 받은 자료
 let form = null;                       // 작성 중인 평가표 { team, items, comment, dirty }
-let adminTab = 'result', openDet = new Set(), timer = null;
+let adminTab = 'judges', openDet = new Set(), timer = null;
 
 const isAdmin = () => S && S.no === 0;
 const go = hash => { location.hash = hash; };
@@ -761,8 +761,8 @@ async function adminDo(action, args = {}) {
 const jname = no => D.judges.find(j => j.no === no)?.name || '심사위원 ' + no;
 function renderAdmin() {
   renderTop();
-  const tabs = [['result','결과·순위'],['progress','진행 현황'],['judges','심사위원 관리'],['teams','평가팀 자료'],['settings','마감·내보내기']];
-  if (!tabs.some(t => t[0] === adminTab)) adminTab = 'result';
+  const tabs = [['judges','심사위원 관리'],['teams','평가자료 등록'],['progress','진행 현황'],['settings','심사 마감'],['result','결과·순위']];
+  if (!tabs.some(t => t[0] === adminTab)) adminTab = 'judges';
   $('#app').innerHTML = `<div class="wrap">
     <div class="pagehead"><div><h1>평가점수 관리</h1><div class="muted">${D.closed ? '<span class="badge b-bad">심사 마감</span>' : '<span class="badge b-ok">심사 진행 중</span>'} <span class="tiny">마지막 갱신 ${new Date().toLocaleTimeString('ko-KR')}</span></div></div>
       <div style="margin-left:auto" class="noprint"><button class="btn sm" id="rf">새로고침</button></div></div>
