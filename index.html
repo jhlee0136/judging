@@ -367,6 +367,37 @@ table.t tr.det>td,table.t tr.det:hover>td{background:#F8FAF9}
   .team{padding:12px 14px}
 }
 
+/* 심사항목 4색: 배점 구성 띠, 평가표 영역, 점수 막대, 결과 막대 */
+.mixbar{display:flex;gap:2px;margin:0 0 14px;border-radius:4px;overflow:hidden;height:34px}
+.mixbar>div{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 10px;color:#fff;font-size:12.5px;min-width:0}
+.mixbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mixbar b{font-family:var(--display);font-size:15px;font-weight:600}
+.area{border-bottom-width:2px}
+.adot{width:10px;height:10px;border-radius:2px;flex:0 0 auto;align-self:center}
+.subs{flex-direction:column;gap:6px;flex:1 1 420px;max-width:560px}
+.scorebar{display:flex;gap:3px;height:10px}
+.sb-seg{background:var(--hair);border-radius:2px;overflow:hidden}
+.sb-seg i{display:block;height:100%;transition:width .25s ease}
+.sb-leg{display:flex;gap:14px;flex-wrap:wrap}
+.sb-leg span{display:inline-flex;align-items:center;gap:5px}
+.sb-leg i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.abar{display:flex;height:6px;margin-top:6px;width:200px;max-width:100%;background:var(--hair);border-radius:2px;overflow:hidden}
+.abar i{display:block;height:100%}
+.zplot{display:block;margin:0 auto}
+/* 심사위원 목록: 12칸 진행 줄 */
+.prog{max-width:420px}
+.ticks{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-top:6px}
+.tk{display:block;text-align:center;font-size:11.5px;line-height:24px;border-radius:3px;text-decoration:none;font-variant-numeric:tabular-nums;border:1px solid var(--rule);color:var(--sub);background:var(--sheet)}
+.tk:hover{border-color:var(--ink)}
+.tk-draft{background:var(--warnbg);border-color:#E3D6AE;color:var(--warn)}
+.tk-full{background:var(--pine);border-color:var(--pine);color:#fff}
+.tk-sent{background:var(--ink);border-color:var(--ink);color:#fff}
+.tk-leg{display:flex;gap:12px;margin-top:6px}
+.tk-leg span{display:inline-flex;align-items:center;gap:4px}
+.tk-leg i{width:10px;height:10px;border-radius:2px;border:1px solid var(--rule);display:inline-block}
+.tk-leg i.tk-full{background:var(--pine);border-color:var(--pine)} .tk-leg i.tk-draft{background:var(--warnbg)} .tk-leg i.tk-none{background:var(--sheet)}
+@media (max-width:560px){ .mixbar span{display:none} .mixbar>div{justify-content:center} .abar{width:140px} }
+@media print{ .sb-seg i{transition:none} .abar{width:160px} }
 .printonly{display:none}
 .phead{margin-bottom:12px}
 .phead h1{font-size:18px;margin-bottom:6px}
@@ -390,6 +421,13 @@ table.t tr.det>td,table.t tr.det:hover>td{background:#F8FAF9}
   #pane .awards{break-after:page;page-break-after:always}
   #pane .formula{break-before:page;page-break-before:always;margin-top:0!important}
   #pane .rank-tbl{break-inside:avoid}
+  #pane .rank-tbl table.t{font-size:9.5px}
+  #pane .rank-tbl table.t th,#pane .rank-tbl table.t td{padding:3px 5px}
+  #pane .rank-tbl .tiny{font-size:8.5px}
+  #pane .rank-tbl .abar{height:4px;margin-top:2px}
+  #pane .rank-tbl .zplot{width:110px;height:16px}
+  #pane .rank-tbl .badge{font-size:9px;padding:0 4px}
+  .ptitle{break-after:avoid}
   .ptitle{font-size:16px;margin:0 0 10px}
   #pane .formula{font-size:10.5px;line-height:1.5;padding:12px 16px}
   #pane .formula .steps li{padding:5px 0 5px 22px}
@@ -424,10 +462,10 @@ const CFG = { url: 'https://qxocbfjymyehpviehile.supabase.co', key: 'sb_publisha
 /* ===== 심사기준 ===== */
 const GR = ['S','A','B','C','D','E'], RT = [1, .8, .6, .4, .2, 0];
 const AREAS = [
-  { name:'창의·혁신성', max:30, items:[0,1] },
-  { name:'효과성', max:30, items:[2,3] },
-  { name:'확산성', max:20, items:[4,5] },
-  { name:'완성도', max:20, items:[6,7] },
+  { name:'창의·혁신성', max:30, items:[0,1], c:'#3A6B5E' },   // 침엽수 녹색
+  { name:'효과성', max:30, items:[2,3], c:'#3E6585' },       // 피오르 청회색
+  { name:'확산성', max:20, items:[4,5], c:'#B08A3E' },       // 자작나무 황토
+  { name:'완성도', max:20, items:[6,7], c:'#8C5876' },       // 헤더 자주
 ];
 const CRIT = [
   { name:'독창성 및 차별성', max:15,
@@ -480,6 +518,10 @@ const CRIT = [
          ['사용 편의성(UX)','긴 설명서 없이도 누구나 자연스럽게 입력하고 결과를 확인할 수 있는가?']] },
 ];
 const MAX = CRIT.map(c => c.max);
+const areaOf = i => AREAS.find(a => a.items.includes(i));
+// 100점 배점 구성 띠(영역별 색, 너비 = 배점)
+const mixBar = () => `<div class="mixbar" role="img" aria-label="배점 구성: ${AREAS.map(a => a.name + ' ' + a.max + '점').join(', ')}">${AREAS.map(a =>
+  `<div style="flex:${a.max};background:${a.c}"><span>${a.name}</span><b>${a.max}</b></div>`).join('')}</div>`;
 const CUT = 70;
 // 시상 규모: 관리자가 '시상 규모 설정'에서 정함(DB jd_state.awards). 값이 없으면 대상 1, 분야별 우수상 1·장려상 2
 const awCfg = () => { const a = D.awards || {};
@@ -782,7 +824,7 @@ function renderTop() {
 /* ===== 랜딩·로그인 ===== */
 function renderLanding(msg) {
   renderTop();
-  const sheetRows = AREAS.map(a => a.items.map((i, k) => `<tr>${k ? '' : `<td class="sa" rowspan="${a.items.length}">${a.name}<small>${a.max}점</small></td>`}
+  const sheetRows = AREAS.map(a => a.items.map((i, k) => `<tr>${k ? '' : `<td class="sa" rowspan="${a.items.length}" style="box-shadow:inset 4px 0 0 ${a.c}">${a.name}<small>${a.max}점</small></td>`}
     <td class="l">${CRIT[i].name}</td>${RT.map((r, g) => `<td class="pt${g ? '' : ' top1'}">${CRIT[i].max * r}</td>`).join('')}</tr>`).join('')).join('');
   $('#app').innerHTML = `
   <section class="masthead"><div class="wrap">
@@ -798,6 +840,7 @@ function renderLanding(msg) {
     <div>
       <section class="card sheetform">
         <h2>심사기준표</h2>
+        ${mixBar()}
         <div style="overflow-x:auto"><table class="areas">
           <thead><tr><th>심사항목</th><th>평가요소</th>${GR.map(g => `<th class="n">${g}</th>`).join('')}</tr></thead>
           <tbody>${sheetRows}</tbody>
@@ -865,7 +908,10 @@ function renderHome() {
   $('#app').innerHTML = `<div class="wrap">
     <div class="pagehead">
       <div><h1>평가팀 목록</h1><div class="muted">사례를 눌러 평가표를 작성하세요. ${D.closed ? '<span class="badge b-bad">심사 마감</span>' : ''}</div></div>
-      <div class="prog"><div class="tiny muted" style="display:flex;justify-content:space-between"><span>평가 진행</span><b>${done} / ${n}</b></div><div class="bar"><i style="width:${n ? done / n * 100 : 0}%"></i></div></div>
+      <div class="prog"><div class="tiny muted" style="display:flex;justify-content:space-between"><span>평가 진행</span><b>${done} / ${n}</b></div>
+        <div class="ticks">${D.teams.map(t => { const s = myScore(t.team_no), st = !s ? 'none' : s.submitted ? 'sent' : isFull(s) ? 'full' : 'draft';
+          return `<a class="tk tk-${st}" href="#/team/${t.team_no}" title="${t.team_no}번 ${({ none:'미평가', draft:'작성 중', full:'평가 완료', sent:'전송됨' })[st]}">${t.team_no}</a>`; }).join('')}</div>
+        <div class="tk-leg tiny muted"><span><i class="tk-full"></i>평가 완료</span><span><i class="tk-draft"></i>작성 중</span><span><i class="tk-none"></i>미평가</span></div></div>
     </div>
     <div class="note"><b>심사 시 유의사항</b><ul>
       <li>실행링크 접속에 문제가 있으면 즉시 감점하지 말고 첨부된 시연 영상으로 기능 실체를 먼저 확인합니다.</li>
@@ -928,9 +974,9 @@ function renderTeam(no) {
       <div><b>A~B (80~60%)</b>대부분 충족하나 일부 세부 논리나 기능 완성도가 미흡함</div>
       <div><b>C~E (40~0%)</b>핵심 내용 누락, 기능 미구동, 기획과 결과물 불일치 등 보완이 크게 필요함</div>
     </div>
-    ${AREAS.map(a => `<div class="area"><h2>${a.name}</h2><span class="muted">${a.max}점</span></div>
+    ${AREAS.map(a => `<div class="area" style="border-bottom-color:${a.c}"><i class="adot" style="background:${a.c}"></i><h2>${a.name}</h2><span class="muted">${a.max}점</span></div>
       ${a.items.map(i => { const c = CRIT[i];
-        return `<div class="card item" id="it${i}">
+        return `<div class="card item" id="it${i}" style="border-left:3px solid ${a.c}">
           <div class="ihead"><span class="badge b-navy">문항 ${i + 1}</span><h3>${c.name}</h3><span class="pts" id="pv${i}"></span></div>
           <p class="iq">${c.q}</p>
           <div class="src">주요 검토 자료 · ${c.src}</div>
@@ -950,7 +996,9 @@ function renderTeam(no) {
   const paint = () => {
     document.querySelectorAll('.g').forEach(b => { const on = form.items[+b.dataset.i] === +b.dataset.v; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
     CRIT.forEach((c, i) => { $('#pv' + i).textContent = (form.items[i] == null ? '–' : form.items[i]) + ' / ' + c.max; });
-    $('#subs').innerHTML = AREAS.map(a => `<span>${a.name} <b>${sum(a.items.map(i => form.items[i]))}</b>/${a.max}</span>`).join('');
+    $('#subs').innerHTML = `<div class="scorebar">${AREAS.map(a => { const v = sum(a.items.map(i => form.items[i]));
+        return `<div class="sb-seg" style="flex:${a.max}"><i style="width:${v / a.max * 100}%;background:${a.c}"></i></div>`; }).join('')}</div>
+      <div class="sb-leg">${AREAS.map(a => `<span><i style="background:${a.c}"></i>${a.name} <b>${sum(a.items.map(i => form.items[i]))}</b>/${a.max}</span>`).join('')}</div>`;
     const left = form.items.filter(v => v == null).length;
     $('#tot').innerHTML = `${sum(form.items)}<small> / 100${left ? ` · 미선택 ${left}` : ''}</small>`;
   };
@@ -1112,6 +1160,24 @@ function statusCell(r) {
   if (!r.ok) return `<span class="badge b-bad">${CUT}점 미만</span>`;
   return r.award ? `<span class="badge ${AW_CLS[r.award]}">${r.award}</span>` : '<span class="badge b-none">선정 외</span>';
 }
+// 영역별 평균 득점 막대(전송된 점수의 단순 평균, 100점 길이 기준)
+function areaBar(r) {
+  if (!r.ent.length) return '';
+  const segs = AREAS.map(a => ({ a, v: mean(r.ent.map(e => sum(a.items.map(i => e.items[i])))) }));
+  return `<div class="abar" title="${segs.map(x => `${x.a.name} ${x.v.toFixed(1)}/${x.a.max}`).join(', ')}">${segs.map(x =>
+    `<i style="width:${x.v}%;background:${x.a.c}"></i>`).join('')}</div>`;
+}
+// 위원별 Z점수 분포: 채운 점 = 평균에 들어간 점수, 빈 점 = 최고·최저로 제외, 세로선 = Z점수 평균
+function zPlot(r, lo, hi) {
+  if (!r.ent.length) return '';
+  const W = 132, H = 22, x = z => 6 + (Math.max(lo, Math.min(hi, z)) - lo) / (hi - lo) * (W - 12);
+  const dots = r.ent.map((e, k) => r.zDrop.includes(k)
+    ? `<circle cx="${x(e.z).toFixed(1)}" cy="11" r="3.6" fill="#fff" stroke="#8D9896" stroke-width="1.3"><title>${h(jname(e.judge))} ${e.z.toFixed(3)} (제외)</title></circle>`
+    : `<circle cx="${x(e.z).toFixed(1)}" cy="11" r="3.6" fill="#2C5A50" fill-opacity=".8"><title>${h(jname(e.judge))} ${e.z.toFixed(3)}</title></circle>`).join('');
+  return `<svg class="zplot" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-label="위원별 Z점수 분포">
+    <line x1="6" x2="${W - 6}" y1="11" y2="11" stroke="#CBD3D0"/><line x1="${x(0).toFixed(1)}" x2="${x(0).toFixed(1)}" y1="5" y2="17" stroke="#CBD3D0"/>
+    ${r.zAvg == null ? '' : `<line x1="${x(r.zAvg).toFixed(1)}" x2="${x(r.zAvg).toFixed(1)}" y1="2" y2="20" stroke="#1E2B2A" stroke-width="2"/>`}${dots}</svg>`;
+}
 function awardSummary(C) {
   const cfg = awCfg(), grand = C.ok.filter(r => r.award === '대상');
   const pick = (fd, name) => C.ok.filter(r => r.team.field === fd && r.award === name);
@@ -1141,6 +1207,8 @@ function awardSummary(C) {
   </div>`;
 }
 function paneResult() {
+  const allZ = compute().rows.flatMap(r => r.ent.map(e => e.z));
+  const zLo = Math.min(-2, ...allZ), zHi = Math.max(2, ...allZ);
   const C = compute(), elig = C.ok.length, excN = C.rows.filter(r => r.exc).length;
   const done = C.rows.filter(r => r.n >= r.expect).length;
   $('#pane').innerHTML = `
@@ -1156,22 +1224,23 @@ function paneResult() {
       <label class="tiny muted" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="pdet"> 위원별 상세 포함</label><button class="btn sm pri" id="pr">PDF 저장</button><button class="btn sm" id="cx">CSV 내보내기</button></div>
     <h2 class="printonly ptitle">전체 순위</h2>
     <div class="tbl-wrap rank-tbl"><table class="t">
-      <thead><tr><th class="c">전체<br>순위</th><th class="c">분야<br>순위</th><th>번호</th><th>사례명</th><th>참가자</th><th class="c">전송</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th><th class="c">시상</th><th class="c noprint">관리</th></tr></thead>
+      <thead><tr><th class="c">전체<br>순위</th><th class="c">분야<br>순위</th><th>번호</th><th>사례명</th><th>참가자</th><th class="c">전송</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th><th class="c">위원별 Z 분포</th><th class="c">시상</th><th class="c noprint">관리</th></tr></thead>
       <tbody>${C.rows.map(r => `
         <tr class="${r.ok ? '' : 'out'}" data-t="${r.team.team_no}" style="cursor:pointer">
           <td class="c">${r.ok ? `<span class="rank ${r.rank <= 3 ? 'r' + r.rank : ''}">${r.rank}</span>` : '–'}</td>
           <td class="c">${r.frank ?? (r.award === '대상' ? '<span class="tiny muted">대상</span>' : '–')}</td>
           <td>${r.team.team_no}</td>
-          <td class="l"><b>${h(r.team.title)}</b><div class="tiny muted">${h(r.team.field)} · ${h(r.team.theme)}</div>
+          <td class="l"><b>${h(r.team.title)}</b><div class="tiny muted">${h(r.team.field)} · ${h(r.team.theme)}</div>${areaBar(r)}
             ${r.exc ? `<div class="tiny" style="color:var(--bad)">제외 사유: ${h(r.exc.reason)}</div>` : ''}</td>
           <td class="tiny">${h(r.team.members)}</td>
           <td class="c"><span class="badge ${r.n >= r.expect ? 'b-ok' : 'b-warn'}">${r.n}/${r.expect}</span></td>
           <td class="n">${f(r.rawAvg)}</td>
           <td class="n"><b>${f(r.zAvg, 3)}</b></td>
+          <td class="c">${zPlot(r, zLo, zHi)}</td>
           <td class="c">${statusCell(r)}</td>
           <td class="c noprint"><button class="btn sm ${r.exc ? '' : 'danger'} ex" data-t="${r.team.team_no}">${r.exc ? '제외 해제' : '제외'}</button></td>
         </tr>
-        ${openDet.has(r.team.team_no) ? `<tr class="det"><td colspan="10">${detail(r, C)}</td></tr>` : ''}`).join('')}</tbody>
+        ${openDet.has(r.team.team_no) ? `<tr class="det"><td colspan="11">${detail(r, C)}</td></tr>` : ''}`).join('')}</tbody>
     </table></div>
     <div class="card pad formula" style="margin-top:16px">
       <h3 style="font-size:15px;margin-bottom:8px">산정 방법</h3>
