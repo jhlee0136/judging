@@ -831,7 +831,7 @@ function renderDemo() {
 }
 function renderTop() {
   const who = S ? `<span class="who">${h(D?.judge?.name || '')}${isAdmin() ? '' : ' 위원님'}</span><button class="btn ghost sm" id="out">로그아웃</button>` : '';
-  $('#top').innerHTML = `<div class="brand" id="home">온라인 심사 시스템</div><div class="sp"></div>${who}`;
+  $('#top').innerHTML = `<div class="brand" id="home">전문대학 혁신지원사업 온라인 심사 시스템</div><div class="sp"></div>${who}`;
   $('#home').onclick = () => go(S ? (isAdmin() ? '#/admin' : '#/home') : '#/');
   if (S) $('#out').onclick = logout;
 }
