@@ -475,7 +475,7 @@ function renderLanding(msg) {
         <h2>심사위원 로그인</h2>
         <p class="muted tiny" style="margin:0">사무국에서 받은 접속코드를 입력하세요.</p>
         <label class="field"><span>구분</span>
-          <select class="inp" id="lno">${[1,2,3,4,5,6].map(n => `<option value="${n}">심사위원 ${n}</option>`).join('')}<option value="0">관리자(사무국)</option></select></label>
+          <select class="inp" id="lno">${[1,2,3,4,5,6].map(n => `<option value="${n}">심사위원 ${n}</option>`).join('')}<option value="0">관리자</option></select></label>
         <label class="field"><span>접속코드</span><input class="inp" id="lcode" placeholder="예: AB12-CD34" autocapitalize="characters" spellcheck="false"></label>
         <div class="err" id="lerr">${h(msg || '')}</div>
         <button class="btn pri" style="width:100%;padding:11px" id="lbtn">로그인</button>
