@@ -93,6 +93,10 @@ h1,h2,h3{letter-spacing:-.02em;margin:0}
 .links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .links a,.links span{font-size:13.5px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);text-decoration:none;background:#fff}
 .links span{color:var(--mute)}
+.viewer{margin:-4px 0 16px;overflow:hidden}
+.vbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line)}
+.vbar .sp{flex:1}
+.vbody iframe{display:block;width:100%;height:80vh;border:0;background:#525659}
 .legend{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
 .legend div{padding:10px 12px;font-size:13px;border-radius:10px;background:#fff;border:1px solid var(--line)}
 .legend b{display:block;font-size:13.5px}
@@ -141,6 +145,8 @@ table.t td.c,table.t th.c{text-align:center}
 table.t tr.out td{color:var(--mute)}
 table.t tr.det td{background:#fafbfd;padding:12px 14px}
 .rank{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--soft);font-weight:800;color:var(--navy)}
+.aw0{background:#f6c445;color:#5a4300}.aw1{background:#e4eaf5;color:var(--navy)}.aw2{background:var(--okbg);color:var(--ok)}
+.awards .aw-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}.awards h3{font-size:16px}
 .rank.r1{background:#f6c445;color:#5a4300}.rank.r2{background:#d6dbe3;color:#3a4250}.rank.r3{background:#e6b48a;color:#5a3412}
 s.drop{color:var(--mute)}
 .mx td.cell{text-align:center;cursor:pointer;font-variant-numeric:tabular-nums}
@@ -247,6 +253,7 @@ const CRIT = [
 ];
 const MAX = CRIT.map(c => c.max);
 const CUT = 70;
+const AWARDS = [{ name:'우수상', n:1 }, { name:'장려상', n:2 }];   // 분야별 수상 팀 수(대상 1팀은 전체 1위)
 
 /* ===== 공통 ===== */
 const $ = s => document.querySelector(s);
@@ -308,11 +315,12 @@ const Mock = (() => {
     [12,'행정혁신','행정업무 개선 및 자동화 프로그램 개발','입학정보시스템 전산화','단체','입학처 조규철 등 2명'],
   ];
   const fresh = () => ({
-    closed:false, recuse:[], scores:[],
+    closed:false, recuse:[], scores:[], excluded:[],
     judges:[0,1,2,3,4,5,6].map(n => ({ no:n, name: n ? '심사위원 ' + n : '관리자', code: 'DEMO000' + n })),
     teams:TEAMS.map(([team_no,field,theme,title,kind,members]) => ({ team_no,field,theme,title,kind,members,report_url:'',demo_url:'',video_url:'' })),
   });
-  const load = () => store.get('jd_demo', localStorage) || fresh();
+  const load = () => Object.assign({ excluded:[] }, store.get('jd_demo', localStorage) || fresh());
+  const FILES = {};                     // 시연용 PDF는 새로고침하면 사라짐(메모리 보관)
   const save = db => store.set('jd_demo', db, localStorage);
   const norm = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const auth = (db, no, code) => { const j = db.judges.find(x => x.no === no); return j && j.code && j.code === norm(code); };
@@ -320,6 +328,9 @@ const Mock = (() => {
     judge: { no, name: db.judges.find(x => x.no === no).name }, closed: db.closed,
     teams: db.teams.filter(t => no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === t.team_no)),
     scores: db.scores.filter(s => no === 0 || s.judge_no === no),
+    files: Object.values(FILES).filter(f => f.complete && (no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === f.team_no)))
+      .map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name, size, chunks, uploaded_at })),
+    excluded: no === 0 ? db.excluded : [],
   });
   const err = e => ({ error: e });
   function call(fn, a) {
@@ -328,8 +339,30 @@ const Mock = (() => {
     else if (fn === 'jd_login') out =auth(db, a.p_judge, a.p_code) ? payload(db, a.p_judge) : err('접속코드가 맞지 않습니다.');
     else if (fn === 'jd_save') out = mSave(db, a);
     else if (fn === 'jd_admin') out = mAdmin(db, a);
+    else if (fn === 'jd_file_put') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mPut(a);
+    else if (fn === 'jd_file_get') out = !auth(db, a.p_judge, a.p_code) ? err('다시 로그인해 주세요.') : FILES[a.p_team]?.complete ? { data:FILES[a.p_team].parts[a.p_idx] } : err('등록된 결과보고서가 없습니다.');
+    else if (fn === 'jd_file_del') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (delete FILES[a.p_team], { ok:true });
+    else if (fn === 'jd_exclude') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mExclude(db, a);
+    else out = err('알 수 없는 요청입니다.');
     save(db);
     return new Promise((res, rej) => setTimeout(() => out.error ? rej(new Error(out.error)) : res(JSON.parse(JSON.stringify(out))), 120));
+  }
+  function mPut(a) {
+    if (a.p_idx === 0) {
+      if (!atob(a.p_data.slice(0, 8)).startsWith('%PDF')) return err('PDF 파일만 올릴 수 있습니다.');
+      FILES[a.p_team] = { team_no:a.p_team, name:a.p_name, size:a.p_size, chunks:a.p_total, parts:[], complete:false, uploaded_at:new Date().toISOString() };
+    }
+    const f = FILES[a.p_team]; f.parts[a.p_idx] = a.p_data;
+    if (a.p_idx === a.p_total - 1) f.complete = f.parts.filter(Boolean).length === a.p_total;
+    return { ok:true };
+  }
+  function mExclude(db, a) {
+    db.excluded = db.excluded.filter(x => x.team_no !== a.p_team);
+    if (a.p_on) {
+      if (!String(a.p_reason || '').trim()) return err('제외 사유를 입력하세요.');
+      db.excluded.push({ team_no:a.p_team, reason:String(a.p_reason).trim().slice(0, 500), at:new Date().toISOString() });
+    }
+    return { ok:true };
   }
   function mSave(db, a) {
     const no = a.p_judge;
@@ -385,6 +418,40 @@ const Mock = (() => {
   }
   return { call };
 })();
+
+/* ===== 결과보고서 PDF: 1MB 조각으로 올리고 받아서 브라우저 안에서 합침 ===== */
+const CHUNK = 1024 * 1024, PDF_MAX = 50 * 1024 * 1024;
+const fileOf = t => (D?.files || []).find(f => f.team_no === t);
+const fsize = n => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+const toB64 = blob => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(String(r.result).split(',')[1] || '');
+  r.onerror = () => rej(new Error('파일을 읽지 못했습니다.'));
+  r.readAsDataURL(blob);
+});
+async function uploadPdf(team, file, onProg) {
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') throw new Error('PDF 파일만 올릴 수 있습니다.');
+  if (!file.size || file.size > PDF_MAX) throw new Error('파일 크기는 50MB 이하여야 합니다.');
+  const total = Math.ceil(file.size / CHUNK);
+  for (let i = 0; i < total; i++) {
+    const data = await toB64(file.slice(i * CHUNK, (i + 1) * CHUNK));
+    await rpc('jd_file_put', { p_code:S.code, p_team:team, p_idx:i, p_total:total, p_name:file.name, p_size:file.size, p_data:data });
+    onProg(i + 1, total);
+  }
+}
+const pdfCache = {};
+async function loadPdf(team, onProg) {
+  const f = fileOf(team), key = team + '|' + f.uploaded_at;
+  if (pdfCache[key]) return pdfCache[key];
+  const parts = [];
+  for (let i = 0; i < f.chunks; i++) {
+    const r = await rpc('jd_file_get', { p_judge:S.no, p_code:S.code, p_team:team, p_idx:i });
+    const bin = atob(r.data), u = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+    parts.push(u); onProg && onProg(i + 1, f.chunks);
+  }
+  return pdfCache[key] = { url:URL.createObjectURL(new Blob(parts, { type:'application/pdf' })), name:f.name };
+}
 
 /* ===== 상태 ===== */
 let S = store.get('jd_sess');          // { no, code }
@@ -468,6 +535,7 @@ function renderLanding(msg) {
           <li>심사위원별 점수 편차를 없애기 위해 위원마다 12개 사례 점수를 Z점수로 표준화합니다.</li>
           <li>사례별로 최고점과 최저점을 하나씩 제외한 나머지 위원의 평균으로 순위를 정합니다.</li>
           <li>원점수 평균(최고·최저 제외)이 <b>70점 미만</b>인 사례는 시상 대상에서 제외합니다.</li>
+          <li><b>대상</b>은 분야 구분 없이 전체 1위 1팀, <b>우수상</b>(분야별 1팀)·<b>장려상</b>(분야별 2팀)은 대상 수상팀을 뺀 분야별 순위로 정합니다.</li>
         </ol>
       </div>
     </div>
@@ -539,13 +607,19 @@ function renderTeam(no) {
   const lock = !!(s && s.submitted) || D.closed;
   const idx = D.teams.findIndex(x => x.team_no === no), prev = D.teams[idx - 1], next = D.teams[idx + 1];
   const link = (u, l) => u ? `<a href="${h(u)}" target="_blank" rel="noopener">${l} ↗</a>` : `<span>${l} (등록 전)</span>`;
+  const pdf = fileOf(no);
   $('#app').innerHTML = `<div class="wrap">
     <div class="crumb"><a href="#/home">← 평가팀 목록</a></div>
     <div class="card tinfo">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="badge b-navy">${t.team_no}번 · ${h(t.field)}</span><span class="muted tiny">${h(t.theme)}</span><span style="margin-left:auto">${statusBadge(s)}</span></div>
       <h1>${h(t.title)}</h1>
       <div class="muted">${h(t.kind)} · ${h(t.members)}</div>
-      <div class="links">${link(t.report_url, '결과보고서')}${link(t.demo_url, '시제품 실행링크')}${link(t.video_url, '시연 영상')}</div>
+      <div class="links">${pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span>결과보고서 (등록 전)</span>'}${link(t.demo_url, '시제품 실행링크')}${link(t.video_url, '시연 영상')}</div>
+    </div>
+    <div class="card viewer" id="vw" hidden>
+      <div class="vbar"><b>결과보고서</b><span class="muted tiny" id="vn"></span><span class="sp"></span>
+        <a class="btn sm" id="vo" target="_blank" rel="noopener" hidden>새 창에서 보기</a><a class="btn sm pri" id="vd" hidden>다운로드</a><button type="button" class="btn sm" id="vx">닫기</button></div>
+      <div id="vb" class="vbody"></div>
     </div>
     ${lock ? `<div class="note">${D.closed ? '심사가 마감되어 평가를 수정할 수 없습니다.' : '제출 완료된 평가입니다. 수정이 필요하면 사무국에 제출 취소를 요청하세요.'}</div>` : ''}
     <div class="legend">
@@ -580,6 +654,24 @@ function renderTeam(no) {
     $('#tot').innerHTML = `${sum(form.items)}<small> / 100${left ? ` · 미선택 ${left}` : ''}</small>`;
   };
   paint();
+  if (pdf) {
+    $('#rv').onclick = async () => {
+      const box = $('#vw');
+      if (!box.hidden) { box.hidden = true; return; }
+      box.hidden = false; $('#vn').textContent = pdf.name + ' · ' + fsize(pdf.size);
+      box.scrollIntoView({ behavior:'smooth', block:'start' });
+      if (box.dataset.ok) return;
+      $('#vb').innerHTML = '<div class="spin" id="vp">불러오는 중…</div>';
+      try {
+        const r = await loadPdf(no, (i, n) => { const el = $('#vp'); if (el) el.textContent = `불러오는 중… ${Math.round(i / n * 100)}%`; });
+        $('#vb').innerHTML = `<iframe src="${r.url}" title="결과보고서"></iframe><div class="tiny muted" style="padding:8px 12px">화면에 보이지 않으면(휴대폰 등) ‘다운로드’ 또는 ‘새 창에서 보기’를 누르세요.</div>`;
+        Object.assign($('#vd'), { href:r.url, download:r.name, hidden:false });
+        Object.assign($('#vo'), { href:r.url, hidden:false });
+        box.dataset.ok = 1;
+      } catch (e) { $('#vb').innerHTML = `<div class="spin">${h(e.message)}</div>`; }
+    };
+    $('#vx').onclick = () => { $('#vw').hidden = true; };
+  }
   if (lock) return;
   document.querySelectorAll('.g').forEach(b => b.onclick = () => {
     form.items[+b.dataset.i] = +b.dataset.v; form.dirty = true; $('#it' + b.dataset.i).classList.remove('miss'); paint();
@@ -635,15 +727,30 @@ function compute() {
     const rT = trim(ent.map(e => e.raw)), zT = trim(ent.map(e => e.z));
     const expect = D.judges.length - D.recuse.filter(r => r.team_no === t.team_no).length;
     const q3 = mean(ent.map(e => e.items[2]));
-    return { team:t, ent, rawAvg:rT.avg, rawDrop:rT.drop, zAvg:zT.avg, zDrop:zT.drop, n:ent.length, expect, q3,
-             ok: rT.avg != null && rT.avg >= CUT };
+    const exc = (D.excluded || []).find(x => x.team_no === t.team_no) || null;
+    return { team:t, ent, rawAvg:rT.avg, rawDrop:rT.drop, zAvg:zT.avg, zDrop:zT.drop, n:ent.length, expect, q3, exc,
+             ok: rT.avg != null && rT.avg >= CUT && !exc };
   });
+  // 순위: 시상 가능 팀(원점수 평균 70점 이상, 관리자 제외 아님)만으로 매김
   const cmp = (a, b) => (b.zAvg - a.zAvg) || (b.rawAvg - a.rawAvg) || (b.q3 - a.q3);
   const ok = rows.filter(r => r.ok).sort(cmp);
   ok.forEach((r, i) => r.rank = i && !cmp(ok[i - 1], r) ? ok[i - 1].rank : i + 1);
-  const out = rows.filter(r => !r.ok).sort((a, b) => (b.rawAvg ?? -1) - (a.rawAvg ?? -1));
+  // 시상: 대상 = 전체 1위, 우수상(1)·장려상(2) = 대상 팀을 뺀 분야별 순위
+  const fields = [...new Set(D.teams.map(t => t.field))];
+  if (ok.length) ok[0].award = '대상';
+  for (const fd of fields) {
+    const list = ok.filter(r => r.team.field === fd && r.award !== '대상');
+    list.forEach((r, i) => { r.frank = i && !cmp(list[i - 1], r) ? list[i - 1].frank : i + 1;
+      r.award = r.frank <= AWARDS[0].n ? AWARDS[0].name : r.frank <= AWARDS[0].n + AWARDS[1].n ? AWARDS[1].name : null; });
+    // 같은 분야에서 동점인데 시상 구분이 갈리거나, 동점으로 수상팀 수가 넘치면 표시
+    list.forEach(r => { r.tie = list.some(o => o !== r && !cmp(o, r)) && (list.some(o => o !== r && !cmp(o, r) && o.award !== r.award)
+      || (r.award && list.filter(o => o.award === r.award).length > AWARDS.find(a => a.name === r.award).n)); });
+  }
+  if (ok[1] && !cmp(ok[0], ok[1])) ok[0].tie = ok[1].tie = true;   // 대상 동점
+  const byZ = (a, b) => (b.zAvg ?? -99) - (a.zAvg ?? -99);
+  const rest = [...rows.filter(r => r.exc).sort(byZ), ...rows.filter(r => !r.exc && !r.ok).sort(byZ)];
   const complete = rows.every(r => r.n >= r.expect);
-  return { J, rows:[...ok, ...out], complete, nSub:sub.length };
+  return { J, rows:[...ok, ...rest], ok, fields, complete, nSub:sub.length };
 }
 
 /* ===== 관리자 ===== */
@@ -669,32 +776,58 @@ function renderAdmin() {
   }
 }
 
+const AW_CLS = { '대상':'aw0', '우수상':'aw1', '장려상':'aw2' };
+function statusCell(r) {
+  if (r.exc) return '<span class="badge b-bad">시상 제외</span>';
+  if (r.rawAvg == null) return '<span class="badge b-none">미집계</span>';
+  if (!r.ok) return `<span class="badge b-bad">${CUT}점 미만</span>`;
+  return r.award ? `<span class="badge ${AW_CLS[r.award]}">${r.award}</span>` : '<span class="badge b-none">선정 외</span>';
+}
+function awardSummary(C) {
+  const grand = C.ok.find(r => r.award === '대상');
+  const pick = (fd, name) => C.ok.filter(r => r.team.field === fd && r.award === name);
+  const line = rs => rs.length ? rs.map(r => `<b>${r.team.team_no}. ${h(r.team.title)}</b>${r.tie ? ' <span class="badge b-warn">동점</span>' : ''}`).join('<br>') : '<span class="muted">해당 팀 없음</span>';
+  const need = (fd, a) => { const n = pick(fd, a.name).length; return n < a.n ? ` <span class="badge b-warn">${a.n - n}팀 부족</span>` : n > a.n ? ` <span class="badge b-warn">${n - a.n}팀 초과(동점)</span>` : ''; };
+  return `<div class="card pad awards">
+    <div class="aw-head"><h3>시상 결과 ${C.complete ? '' : '<span class="badge b-warn">잠정</span>'}</h3><span class="muted tiny">대상은 전체 1위, 우수상·장려상은 대상 팀을 뺀 분야별 순위</span></div>
+    <table class="t"><thead><tr><th>구분</th><th>분야</th><th>규모</th><th>수상팀</th></tr></thead><tbody>
+      <tr><td><span class="badge aw0">대상</span></td><td>전체</td><td>1팀</td><td>${grand ? line([grand]) : '<span class="muted">해당 팀 없음</span>'}</td></tr>
+      ${AWARDS.map(a => C.fields.map((fd, i) => `<tr>${i ? '' : `<td rowspan="${C.fields.length}"><span class="badge ${AW_CLS[a.name]}">${a.name}</span></td>`}
+        <td>${h(fd)}</td><td>${a.n}팀${need(fd, a)}</td><td>${line(pick(fd, a.name))}</td></tr>`).join('')).join('')}
+    </tbody></table>
+    ${C.ok.some(r => r.tie && r.award) ? '<div class="tiny" style="color:var(--warn);margin-top:8px">시상 경계에 동점(Z점수·원점수·문항 3 평균이 모두 같음)이 있습니다. 심사위원회에서 확인하세요.</div>' : ''}
+  </div>`;
+}
 function paneResult() {
-  const C = compute(), award = C.rows.filter(r => r.ok).length;
+  const C = compute(), elig = C.ok.length, excN = C.rows.filter(r => r.exc).length;
   const done = C.rows.filter(r => r.n >= r.expect).length;
   $('#pane').innerHTML = `
     <div class="kpis">
       <div class="card kpi"><b>${C.nSub}</b><span class="muted tiny">제출된 평가표 (전체 ${sum(C.rows.map(r => r.expect))})</span></div>
       <div class="card kpi"><b>${done} / ${C.rows.length}</b><span class="muted tiny">평가 완료 사례</span></div>
-      <div class="card kpi"><b>${award}</b><span class="muted tiny">시상 대상 (원점수 평균 ${CUT}점 이상)</span></div>
+      <div class="card kpi"><b>${elig}</b><span class="muted tiny">시상 가능 (원점수 평균 ${CUT}점 이상${excN ? ` · 관리자 제외 ${excN}` : ''})</span></div>
       <div class="card kpi"><b>${C.complete ? '확정 가능' : '잠정'}</b><span class="muted tiny">${C.complete ? '모든 평가가 제출됨' : '미제출 평가가 있어 Z점수가 바뀔 수 있음'}</span></div>
     </div>
-    <div class="toolbar"><span class="muted tiny">순위 = Z점수(최고·최저 제외 평균) 내림차순 · 동점이면 원점수 평균, 문항 3 평균 순 · 행을 누르면 위원별 상세</span><span class="sp"></span>
+    ${awardSummary(C)}
+    <div class="toolbar" style="margin-top:16px"><span class="muted tiny">순위 = Z점수(최고·최저 제외 평균) 내림차순 · 동점이면 원점수 평균, 문항 3 평균 순 · 행을 누르면 위원별 상세 · ‘제외’로 시상에서 뺄 수 있음</span><span class="sp"></span>
       <button class="btn sm" id="pr">인쇄</button><button class="btn sm" id="cx">CSV 내보내기</button></div>
     <div class="tbl-wrap"><table class="t">
-      <thead><tr><th class="c">순위</th><th>번호</th><th>사례명</th><th>참가자</th><th class="c">제출</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th><th class="c">시상</th></tr></thead>
+      <thead><tr><th class="c">전체<br>순위</th><th class="c">분야<br>순위</th><th>번호</th><th>사례명</th><th>참가자</th><th class="c">제출</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th><th class="c">시상</th><th class="c noprint">관리</th></tr></thead>
       <tbody>${C.rows.map(r => `
         <tr class="${r.ok ? '' : 'out'}" data-t="${r.team.team_no}" style="cursor:pointer">
           <td class="c">${r.ok ? `<span class="rank ${r.rank <= 3 ? 'r' + r.rank : ''}">${r.rank}</span>` : '–'}</td>
+          <td class="c">${r.frank ?? (r.award === '대상' ? '<span class="tiny muted">대상</span>' : '–')}</td>
           <td>${r.team.team_no}</td>
-          <td><b>${h(r.team.title)}</b><div class="tiny muted">${h(r.team.field)} · ${h(r.team.theme)}</div></td>
+          <td><b>${h(r.team.title)}</b><div class="tiny muted">${h(r.team.field)} · ${h(r.team.theme)}</div>
+            ${r.exc ? `<div class="tiny" style="color:var(--bad)">제외 사유: ${h(r.exc.reason)}</div>` : ''}</td>
           <td class="tiny">${h(r.team.members)}</td>
           <td class="c"><span class="badge ${r.n >= r.expect ? 'b-ok' : 'b-warn'}">${r.n}/${r.expect}</span></td>
           <td class="n">${f(r.rawAvg)}</td>
           <td class="n"><b>${f(r.zAvg, 3)}</b></td>
-          <td class="c">${r.rawAvg == null ? '<span class="badge b-none">미집계</span>' : r.ok ? '<span class="badge b-ok">대상</span>' : `<span class="badge b-bad">${CUT}점 미만</span>`}</td>
+          <td class="c">${statusCell(r)}</td>
+          <td class="c noprint"><button class="btn sm ${r.exc ? '' : 'danger'} ex" data-t="${r.team.team_no}">${r.exc ? '제외 해제' : '제외'}</button></td>
         </tr>
-        ${openDet.has(r.team.team_no) ? `<tr class="det"><td colspan="8">${detail(r, C)}</td></tr>` : ''}`).join('')}</tbody>
+        ${openDet.has(r.team.team_no) ? `<tr class="det"><td colspan="10">${detail(r, C)}</td></tr>` : ''}`).join('')}</tbody>
     </table></div>
     <div class="card pad formula" style="margin-top:16px">
       <h3 style="font-size:15px;margin-bottom:8px">산정 방법</h3>
@@ -703,14 +836,35 @@ function paneResult() {
         <li>Z점수: 심사위원별로 제출한 사례 점수 전체의 평균·표준편차로 <code>Z = (원점수 − 위원 평균) ÷ 위원 표준편차</code> (모표준편차, 위원 점수가 모두 같으면 Z = 0)</li>
         <li>Z점수는 0이 그 위원의 평균, +1이 평균보다 표준편차 1만큼 높은 점수를 뜻합니다.</li>
         <li>사례별로 원점수와 Z점수 각각 최고·최저 1개씩을 빼고 평균(평가 위원 3명 미만이면 단순 평균)</li>
-        <li>원점수 평균 ${CUT}점 미만은 시상 제외, 나머지를 Z점수 평균으로 순위 결정</li>
+        <li>원점수 평균 ${CUT}점 미만과 관리자가 시상 제외한 사례를 뺀 나머지를 Z점수 평균으로 순위 결정(제외해도 위원별 Z점수 기준은 그대로)</li>
+        <li>대상: 전체 1위 1팀 · 우수상: 대상 팀을 뺀 분야별 1위 각 1팀 · 장려상: 그다음 분야별 2팀씩</li>
       </ol>
     </div>`;
   document.querySelectorAll('tr[data-t]').forEach(tr => tr.onclick = () => {
     const n = +tr.dataset.t; openDet.has(n) ? openDet.delete(n) : openDet.add(n); paneResult();
   });
+  document.querySelectorAll('.ex').forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    const t = +b.dataset.t, team = D.teams.find(x => x.team_no === t), cur = (D.excluded || []).find(x => x.team_no === t);
+    if (cur) {
+      if (!await confirmBox('시상 제외 해제', `<b>${h(team.title)}</b>을(를) 다시 순위·시상 산정에 넣습니다.<br>제외 사유: ${h(cur.reason)}`, '해제')) return;
+      return setExclude(t, false, '');
+    }
+    let reason = '';
+    const p = modal('시상 제외', `<p class="muted" style="margin:0 0 10px"><b>${t}. ${h(team.title)}</b><br>점수와 관계없이 시상에서 빼고, 나머지 팀으로 순위를 다시 매깁니다.</p>
+      <label class="field" style="margin-top:0"><span>제외 사유 (필수)</span><textarea class="inp" id="exr" maxlength="500" placeholder="예: 기존 상용 서비스와 동일한 결과물로 확인됨"></textarea></label>`,
+      [{ label:'취소', value:false }, { label:'제외', value:true, cls:'danger' }]);
+    const ta = $('#exr'); ta.oninput = () => reason = ta.value; ta.focus();
+    if (!await p) return;
+    if (!reason.trim()) return toast('제외 사유를 입력해야 제외할 수 있습니다.');
+    setExclude(t, true, reason);
+  });
   $('#pr').onclick = () => window.print();
   $('#cx').onclick = () => exportCSV(C);
+}
+async function setExclude(team, on, reason) {
+  try { await rpc('jd_exclude', { p_code:S.code, p_team:team, p_on:on, p_reason:reason }); await adminDo('load'); renderAdmin(); toast(on ? '시상에서 제외하고 순위를 다시 매겼습니다.' : '제외를 해제했습니다.'); }
+  catch (e) { toast(e.message); }
 }
 function detail(r, C) {
   if (!r.ent.length) return '<span class="muted">제출된 평가가 없습니다.</span>';
@@ -805,21 +959,55 @@ function paneJudges() {
 }
 
 function paneTeams() {
+  const fcell = t => { const f = fileOf(t.team_no);
+    return `<div class="tiny" id="fs${t.team_no}">${f ? `<b>${h(f.name)}</b><br><span class="muted">${fsize(f.size)} · ${new Date(f.uploaded_at).toLocaleString('ko-KR')}</span>` : '<span class="muted">미등록</span>'}</div>
+      <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap">
+        <label class="btn sm ${f ? '' : 'pri'}">${f ? '교체' : 'PDF 올리기'}<input type="file" accept="application/pdf,.pdf" class="fu" data-t="${t.team_no}" hidden></label>
+        ${f ? `<button class="btn sm fv" data-t="${t.team_no}">보기</button><button class="btn sm danger fd" data-t="${t.team_no}">삭제</button>` : ''}</div>`; };
   $('#pane').innerHTML = `
-    <div class="note">각 사례의 결과보고서·시제품 실행링크·시연 영상 주소를 입력하면 심사위원 평가표 상단에 바로가기로 표시됩니다(구글 드라이브 공유 링크 등).</div>
+    <div class="note">결과보고서는 PDF 파일(50MB 이하)로 올리면 심사위원이 평가표 화면에서 바로 보고 내려받을 수 있습니다. 시제품 실행링크·시연 영상 주소는 입력 후 저장하면 평가표에서 새 창으로 열립니다.</div>
     <div class="tbl-wrap"><table class="t">
-      <thead><tr><th>번호</th><th>사례명</th><th>결과보고서</th><th>실행링크</th><th>시연 영상</th><th></th></tr></thead>
+      <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>시연 영상</th><th></th></tr></thead>
       <tbody>${D.teams.map(t => `<tr data-t="${t.team_no}"><td>${t.team_no}</td><td style="min-width:200px">${h(t.title)}</td>
-        ${['report_url','demo_url','video_url'].map(k => `<td><input class="inp" data-k="${k}" value="${h(t[k])}" placeholder="https://" style="min-width:150px"></td>`).join('')}
+        <td style="min-width:190px">${fcell(t)}</td>
+        ${['demo_url','video_url'].map(k => `<td><input class="inp" data-k="${k}" value="${h(t[k])}" placeholder="https://" style="min-width:150px"></td>`).join('')}
         <td><button class="btn sm ts">저장</button></td></tr>`).join('')}</tbody></table></div>`;
   document.querySelectorAll('.ts').forEach(b => b.onclick = async () => {
-    const tr = b.closest('tr'), args = { team_no:+tr.dataset.t };
-    for (const i of tr.querySelectorAll('input')) {
+    const tr = b.closest('tr'), t = D.teams.find(x => x.team_no === +tr.dataset.t), args = { team_no:t.team_no, report_url:t.report_url };
+    for (const i of tr.querySelectorAll('input.inp')) {
       const v = i.value.trim();
       if (v && !/^https?:\/\//i.test(v)) return toast('주소는 http:// 또는 https://로 시작해야 합니다.');
       args[i.dataset.k] = v;
     }
-    if (await adminDo('set_team', args)) toast(tr.dataset.t + '번 사례 자료를 저장했습니다.');
+    if (await adminDo('set_team', args)) toast(t.team_no + '번 사례 자료를 저장했습니다.');
+  });
+  document.querySelectorAll('.fu').forEach(inp => inp.onchange = async () => {
+    const file = inp.files[0], t = +inp.dataset.t; inp.value = '';
+    if (!file) return;
+    if (fileOf(t) && !await confirmBox('결과보고서 교체', `${t}번 사례의 기존 PDF를 <b>${h(file.name)}</b>(으)로 바꿉니다.`, '교체')) return;
+    const st = $('#fs' + t);
+    document.querySelectorAll('.fu,.fv,.fd').forEach(x => x.disabled = true);
+    try {
+      await uploadPdf(t, file, (i, n) => { st.innerHTML = `<b>올리는 중… ${Math.round(i / n * 100)}%</b>`; });
+      await adminDo('load'); toast(t + '번 결과보고서를 올렸습니다.');
+    } catch (e) { toast(e.message); }
+    renderAdmin();
+  });
+  document.querySelectorAll('.fv').forEach(b => b.onclick = async () => {
+    const t = +b.dataset.t; b.disabled = true; b.textContent = '불러오는 중…';
+    try {
+      const r = await loadPdf(t);
+      await modal(`${t}번 결과보고서`, `<p class="muted" style="margin:0 0 12px">${h(r.name)}</p>
+        <a class="btn" href="${r.url}" target="_blank" rel="noopener">새 창에서 보기</a> <a class="btn pri" href="${r.url}" download="${h(r.name)}">다운로드</a>`,
+        [{ label:'닫기', value:null }]);
+    } catch (e) { toast(e.message); }
+    b.disabled = false; b.textContent = '보기';
+  });
+  document.querySelectorAll('.fd').forEach(b => b.onclick = async () => {
+    const t = +b.dataset.t;
+    if (!await confirmBox('결과보고서 삭제', `${t}번 사례의 PDF를 삭제합니다. 심사위원 화면에서도 사라집니다.`, '삭제', 'danger')) return;
+    try { await rpc('jd_file_del', { p_code:S.code, p_team:t }); await adminDo('load'); toast('삭제했습니다.'); renderAdmin(); }
+    catch (e) { toast(e.message); }
   });
 }
 
@@ -858,11 +1046,11 @@ function download(name, rows) {
 }
 const stamp = () => new Date().toISOString().slice(0, 10);
 function exportCSV(C) {
-  const head = ['순위','번호','분야','지원주제','사례명','구분','참가자','제출위원수','원점수평균(최고최저제외)','Z점수평균(최고최저제외)','시상대상'];
+  const head = ['전체순위','분야순위','번호','분야','지원주제','사례명','구분','참가자','제출위원수','원점수평균(최고최저제외)','Z점수평균(최고최저제외)','시상','제외사유'];
   D.judges.forEach(j => head.push(j.name + ' 원점수', j.name + ' Z점수'));
   const rows = C.rows.map(r => {
-    const row = [r.ok ? r.rank : '', r.team.team_no, r.team.field, r.team.theme, r.team.title, r.team.kind, r.team.members, r.n,
-      r.rawAvg == null ? '' : r.rawAvg.toFixed(2), r.zAvg == null ? '' : r.zAvg.toFixed(3), r.rawAvg == null ? '미집계' : r.ok ? '대상' : CUT + '점 미만 제외'];
+    const row = [r.ok ? r.rank : '', r.frank ?? '', r.team.team_no, r.team.field, r.team.theme, r.team.title, r.team.kind, r.team.members, r.n,
+      r.rawAvg == null ? '' : r.rawAvg.toFixed(2), r.zAvg == null ? '' : r.zAvg.toFixed(3), r.exc ? '시상 제외' : r.rawAvg == null ? '미집계' : !r.ok ? CUT + '점 미만' : r.award || '선정 외', r.exc ? r.exc.reason : ''];
     D.judges.forEach(j => { const e = r.ent.find(x => x.judge === j.no); row.push(e ? e.raw : '', e ? e.z.toFixed(3) : ''); });
     return row;
   });
