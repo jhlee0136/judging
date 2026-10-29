@@ -281,7 +281,11 @@ const CRIT = [
 ];
 const MAX = CRIT.map(c => c.max);
 const CUT = 70;
-const AWARDS = [{ name:'우수상', n:1 }, { name:'장려상', n:2 }];   // 분야별 수상 팀 수(대상 1팀은 전체 1위)
+// 시상 규모: 관리자가 '시상 규모 설정'에서 정함(DB jd_state.awards). 값이 없으면 대상 1, 분야별 우수상 1·장려상 2
+const awCfg = () => { const a = D.awards || {};
+  return { grand: a.grand ?? 1, f: fd => ({ best: a.fields?.[fd]?.best ?? 1, enc: a.fields?.[fd]?.enc ?? 2 }) }; };
+const AW_NAMES = ['우수상', '장려상'];
+const awN = (c, name) => name === '우수상' ? c.best : c.enc;
 
 /* ===== 공통 ===== */
 const $ = s => document.querySelector(s);
@@ -343,7 +347,7 @@ const Mock = (() => {
     [12,'행정혁신','행정업무 개선 및 자동화 프로그램 개발','입학정보시스템 전산화','단체','입학처 조규철 등 2명'],
   ];
   const fresh = () => ({
-    closed:false, recuse:[], scores:[], excluded:[], sent:[],
+    closed:false, recuse:[], scores:[], excluded:[], sent:[], awards:{ grand:1, fields:{ '교육혁신':{ best:1, enc:2 }, '행정혁신':{ best:1, enc:2 } } },
     judges:[0,1,2,3,4,5,6].map(n => ({ no:n, name: n ? '심사위원 ' + n : '관리자', code: 'DEMO000' + n })),
     teams:TEAMS.map(([team_no,field,theme,title,kind,members]) => ({ team_no,field,theme,title,kind,members,report_url:'',demo_url:'',video_url:'' })),
   });
@@ -360,6 +364,7 @@ const Mock = (() => {
     files: Object.values(FILES).filter(f => f.complete && (no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === f.team_no)))
       .map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name: no === 0 ? name : `결과보고서_${team_no}번.pdf`, size, chunks, uploaded_at })),
     excluded: no === 0 ? db.excluded : [],
+    awards: no === 0 ? db.awards : null,
     sent: db.sent.filter(x => no === 0 || x.judge_no === no),
   });
   const err = e => ({ error: e });
@@ -377,6 +382,7 @@ const Mock = (() => {
       : (db.sent = db.sent.filter(x => x.judge_no !== a.p_judge), db.scores.forEach(s => { if (s.judge_no === a.p_judge) s.submitted = false; }), { ok:true });
     else if (fn === 'jd_issue_code') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mIssue(db, a.p_judge);
     else if (fn === 'jd_view_code') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : { code: db.judges.find(x => x.no === a.p_judge)?.plain || null };
+    else if (fn === 'jd_set_awards') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (db.awards = a.p_awards, { ok:true });
     else if (fn === 'jd_exclude') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mExclude(db, a);
     else out = err('알 수 없는 요청입니다.');
     save(db);
@@ -588,7 +594,7 @@ function renderLanding(msg) {
           <li>심사위원별 점수 편차를 없애기 위해 위원마다 12개 사례 점수를 Z점수로 표준화합니다.</li>
           <li>사례별로 최고점과 최저점을 하나씩 제외한 나머지 위원의 평균으로 순위를 정합니다.</li>
           <li>원점수 평균(최고·최저 제외)이 <b>70점 미만</b>인 사례는 시상 대상에서 제외합니다.</li>
-          <li><b>대상</b>은 분야 구분 없이 전체 1위 1팀, <b>우수상</b>(분야별 1팀)·<b>장려상</b>(분야별 2팀)은 대상 수상팀을 뺀 분야별 순위로 정합니다.</li>
+          <li><b>대상</b>은 분야 구분 없이 전체 순위로, <b>우수상</b>·<b>장려상</b>은 대상 수상팀을 뺀 분야별 순위로 정합니다.</li>
         </ol>
       </div>
     </div>
@@ -821,21 +827,23 @@ function compute() {
              ok: rT.avg != null && rT.avg >= CUT && !exc };
   });
   // 순위: 시상 가능 팀(원점수 평균 70점 이상, 관리자 제외 아님)만으로 매김
-  const cmp = (a, b) => (b.zAvg - a.zAvg) || (b.rawAvg - a.rawAvg) || (b.q3 - a.q3);
+  // 비교: Z점수 평균 → 원점수 평균 → 문항 3 평균. 부동소수 오차(1e-9 미만)는 같은 값으로 봄
+  const near = (x, y) => Math.abs(x - y) < 1e-9;
+  const cmp = (a, b) => !near(a.zAvg, b.zAvg) ? b.zAvg - a.zAvg : !near(a.rawAvg, b.rawAvg) ? b.rawAvg - a.rawAvg : !near(a.q3, b.q3) ? b.q3 - a.q3 : 0;
   const ok = rows.filter(r => r.ok).sort(cmp);
   ok.forEach((r, i) => r.rank = i && !cmp(ok[i - 1], r) ? ok[i - 1].rank : i + 1);
-  // 시상: 대상 = 전체 1위, 우수상(1)·장려상(2) = 대상 팀을 뺀 분야별 순위
-  const fields = [...new Set(D.teams.map(t => t.field))];
-  if (ok.length) ok[0].award = '대상';
+  // 시상: 대상 = 전체 상위 N팀, 우수상·장려상 = 대상 팀을 뺀 분야별 순위(분야마다 팀 수 설정)
+  const fields = [...new Set(D.teams.map(t => t.field))], cfg = awCfg();
+  ok.slice(0, cfg.grand).forEach(r => r.award = '대상');
+  if (cfg.grand && ok[cfg.grand] && !cmp(ok[cfg.grand - 1], ok[cfg.grand])) ok[cfg.grand - 1].tie = ok[cfg.grand].tie = true;   // 대상 경계 동점
   for (const fd of fields) {
-    const list = ok.filter(r => r.team.field === fd && r.award !== '대상');
+    const c = cfg.f(fd), list = ok.filter(r => r.team.field === fd && r.award !== '대상');
     list.forEach((r, i) => { r.frank = i && !cmp(list[i - 1], r) ? list[i - 1].frank : i + 1;
-      r.award = r.frank <= AWARDS[0].n ? AWARDS[0].name : r.frank <= AWARDS[0].n + AWARDS[1].n ? AWARDS[1].name : null; });
+      r.award = r.frank <= c.best ? '우수상' : r.frank <= c.best + c.enc ? '장려상' : null; });
     // 같은 분야에서 동점인데 시상 구분이 갈리거나, 동점으로 수상팀 수가 넘치면 표시
-    list.forEach(r => { r.tie = list.some(o => o !== r && !cmp(o, r)) && (list.some(o => o !== r && !cmp(o, r) && o.award !== r.award)
-      || (r.award && list.filter(o => o.award === r.award).length > AWARDS.find(a => a.name === r.award).n)); });
+    list.forEach(r => { r.tie = r.tie || (list.some(o => o !== r && !cmp(o, r)) && (list.some(o => o !== r && !cmp(o, r) && o.award !== r.award)
+      || (!!r.award && list.filter(o => o.award === r.award).length > awN(c, r.award)))); });
   }
-  if (ok[1] && !cmp(ok[0], ok[1])) ok[0].tie = ok[1].tie = true;   // 대상 동점
   const byZ = (a, b) => (b.zAvg ?? -99) - (a.zAvg ?? -99);
   const rest = [...rows.filter(r => r.exc).sort(byZ), ...rows.filter(r => !r.exc && !r.ok).sort(byZ)];
   const complete = rows.every(r => r.n >= r.expect);
@@ -873,17 +881,20 @@ function statusCell(r) {
   return r.award ? `<span class="badge ${AW_CLS[r.award]}">${r.award}</span>` : '<span class="badge b-none">선정 외</span>';
 }
 function awardSummary(C) {
-  const grand = C.ok.find(r => r.award === '대상');
+  const cfg = awCfg(), grand = C.ok.filter(r => r.award === '대상');
   const pick = (fd, name) => C.ok.filter(r => r.team.field === fd && r.award === name);
   const line = rs => rs.length ? rs.map(r => `<b>${r.team.team_no}. ${h(r.team.title)}</b>${r.tie ? ' <span class="badge b-warn">동점</span>' : ''}`).join('<br>') : '<span class="muted">해당 팀 없음</span>';
-  const need = (fd, a) => { const n = pick(fd, a.name).length; return n < a.n ? ` <span class="badge b-warn">${a.n - n}팀 부족</span>` : n > a.n ? ` <span class="badge b-warn">${n - a.n}팀 초과(동점)</span>` : ''; };
+  const gap = (have, want) => have < want ? ` <span class="badge b-warn">${want - have}팀 부족</span>` : have > want ? ` <span class="badge b-warn">${have - want}팀 초과(동점)</span>` : '';
+  const tiers = AW_NAMES.map(name => ({ name, fs: C.fields.filter(fd => awN(cfg.f(fd), name) > 0) })).filter(x => x.fs.length);
+  const none = !cfg.grand && !tiers.length;
   return `<div class="card pad awards">
-    <div class="aw-head"><h3>시상 결과 ${C.complete ? '' : '<span class="badge b-warn">잠정</span>'}</h3><span class="muted tiny">대상은 전체 1위, 우수상·장려상은 대상 팀을 뺀 분야별 순위</span></div>
+    <div class="aw-head"><h3>시상 결과 ${C.complete ? '' : '<span class="badge b-warn">잠정</span>'}</h3><span class="muted tiny">대상은 전체 순위, 우수상·장려상은 대상 팀을 뺀 분야별 순위</span><span style="flex:1"></span><button class="btn sm noprint" id="aws">시상 규모 설정</button></div>
+    ${none ? '<div class="muted">시상 규모가 모두 0팀으로 설정되어 있습니다(시상 없음). ‘시상 규모 설정’에서 바꿀 수 있습니다.</div>' : `
     <table class="t"><thead><tr><th>구분</th><th>분야</th><th>규모</th><th>수상팀</th></tr></thead><tbody>
-      <tr><td><span class="badge aw0">대상</span></td><td>전체</td><td>1팀</td><td>${grand ? line([grand]) : '<span class="muted">해당 팀 없음</span>'}</td></tr>
-      ${AWARDS.map(a => C.fields.map((fd, i) => `<tr>${i ? '' : `<td rowspan="${C.fields.length}"><span class="badge ${AW_CLS[a.name]}">${a.name}</span></td>`}
-        <td>${h(fd)}</td><td>${a.n}팀${need(fd, a)}</td><td>${line(pick(fd, a.name))}</td></tr>`).join('')).join('')}
-    </tbody></table>
+      ${cfg.grand ? `<tr><td><span class="badge aw0">대상</span></td><td>전체</td><td>${cfg.grand}팀${gap(grand.length, cfg.grand)}</td><td>${line(grand)}</td></tr>` : ''}
+      ${tiers.map(tr => tr.fs.map((fd, i) => `<tr>${i ? '' : `<td rowspan="${tr.fs.length}"><span class="badge ${AW_CLS[tr.name]}">${tr.name}</span></td>`}
+        <td>${h(fd)}</td><td>${awN(cfg.f(fd), tr.name)}팀${gap(pick(fd, tr.name).length, awN(cfg.f(fd), tr.name))}</td><td>${line(pick(fd, tr.name))}</td></tr>`).join('')).join('')}
+    </tbody></table>`}
     ${C.ok.some(r => r.tie && r.award) ? '<div class="tiny" style="color:var(--warn);margin-top:8px">시상 경계에 동점(Z점수·원점수·문항 3 평균이 모두 같음)이 있습니다. 심사위원회에서 확인하세요.</div>' : ''}
   </div>`;
 }
@@ -931,7 +942,7 @@ function paneResult() {
         <li>Z점수는 0이 그 위원의 평균, +1이 평균보다 표준편차 1만큼 높은 점수를 뜻합니다.</li>
         <li>사례별로 원점수와 Z점수 각각 최고·최저 1개씩을 빼고 평균(평가 위원 3명 미만이면 단순 평균)</li>
         <li>원점수 평균 ${CUT}점 미만과 관리자가 시상 제외한 사례를 뺀 나머지를 Z점수 평균으로 순위 결정(제외해도 위원별 Z점수 기준은 그대로)</li>
-        <li>대상: 전체 1위 1팀 · 우수상: 대상 팀을 뺀 분야별 1위 각 1팀 · 장려상: 그다음 분야별 2팀씩</li>
+        <li>시상 규모: 대상 전체 상위 ${awCfg().grand}팀 · ${C.fields.map(fd => `${h(fd)} 우수상 ${awCfg().f(fd).best}팀·장려상 ${awCfg().f(fd).enc}팀`).join(' · ')} (우수상·장려상은 대상 팀을 뺀 분야별 순위)</li>
       </ol>
     </div>`;
   document.querySelectorAll('tr[data-t]').forEach(tr => tr.onclick = () => {
@@ -953,6 +964,7 @@ function paneResult() {
     if (!reason.trim()) return toast('제외 사유를 입력해야 제외할 수 있습니다.');
     setExclude(t, true, reason);
   });
+  $('#aws').onclick = editAwards;
   $('#pr').onclick = () => printResult($('#pdet').checked);
   $('#cx').onclick = () => exportCSV(C);
 }
@@ -968,6 +980,25 @@ function printResult(withDet) {
   window.addEventListener('afterprint', done);
   toast('인쇄 창의 ‘대상(프린터)’에서 ‘PDF로 저장’을 고르세요.');
   setTimeout(() => window.print(), 100);
+}
+async function editAwards() {
+  const cfg = awCfg(), fields = [...new Set(D.teams.map(t => t.field))];
+  const num = (id, v) => `<input class="inp" type="number" min="0" max="12" step="1" id="${id}" value="${v}" style="width:80px;padding:6px 8px">`;
+  const p = modal('시상 규모 설정', `<p class="muted" style="margin:0 0 12px">팀 수를 0으로 두면 그 상은 주지 않습니다. 저장하면 결과·순위의 시상이 바로 다시 매겨집니다.</p>
+    <table class="t"><tbody>
+      <tr><td><span class="badge aw0">대상</span> 전체</td><td class="n">${num('aw_g', cfg.grand)} 팀</td></tr>
+      ${fields.map((fd, i) => `<tr><td><span class="badge aw1">우수상</span> ${h(fd)}</td><td class="n">${num('aw_b' + i, cfg.f(fd).best)} 팀</td></tr>
+        <tr><td><span class="badge aw2">장려상</span> ${h(fd)}</td><td class="n">${num('aw_e' + i, cfg.f(fd).enc)} 팀</td></tr>`).join('')}
+    </tbody></table>`, [{ label:'취소', value:false }, { label:'저장', value:true, cls:'pri' }]);
+  const vals = {};
+  document.querySelectorAll('.modal input[type=number]').forEach(i => { vals[i.id] = i.value; i.oninput = () => vals[i.id] = i.value; });
+  if (!await p) return;
+  const n = v => String(v).trim() !== '' && Number.isInteger(+v) && +v >= 0 && +v <= 12 ? +v : NaN;
+  const body = { grand:n(vals.aw_g), fields:{} };
+  fields.forEach((fd, i) => body.fields[fd] = { best:n(vals['aw_b' + i]), enc:n(vals['aw_e' + i]) });
+  if ([body.grand, ...Object.values(body.fields).flatMap(x => [x.best, x.enc])].some(Number.isNaN)) return toast('팀 수는 0~12 사이의 정수로 입력하세요.');
+  try { await rpc('jd_set_awards', { p_code:S.code, p_awards:body }); await adminDo('load'); renderAdmin(); toast('시상 규모를 저장하고 시상을 다시 매겼습니다.'); }
+  catch (e) { toast(e.message); }
 }
 async function setExclude(team, on, reason) {
   try { await rpc('jd_exclude', { p_code:S.code, p_team:team, p_on:on, p_reason:reason }); await adminDo('load'); renderAdmin(); toast(on ? '시상에서 제외하고 순위를 다시 매겼습니다.' : '제외를 해제했습니다.'); }
