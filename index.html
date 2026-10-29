@@ -58,7 +58,8 @@ h1,h2,h3{letter-spacing:-.02em;margin:0}
 .areas{width:100%;border-collapse:collapse;font-size:14px}
 .areas th,.areas td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 .areas th{color:var(--sub);font-weight:600;font-size:13px;background:var(--soft)}
-.areas td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.areas td.n{white-space:nowrap;font-variant-numeric:tabular-nums}
+.areas th,.areas td{text-align:center}.areas td.l{text-align:left}
 .steps{counter-reset:s;list-style:none;padding:0;margin:0}
 .steps li{position:relative;padding:0 0 12px 34px}
 .steps .fx{margin:8px 0 4px;padding:8px 12px;background:var(--soft);border-radius:8px;font-weight:600;color:var(--navy);font-size:14px}
@@ -148,7 +149,10 @@ textarea.inp{min-height:96px;resize:vertical}
 table.t{width:100%;border-collapse:collapse;font-size:14px}
 table.t th,table.t td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 table.t th{background:var(--soft);color:var(--sub);font-size:12.5px;font-weight:700;white-space:nowrap}
-table.t td.n,table.t th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.t th,table.t td{text-align:center}
+table.t td.n,table.t th.n{text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.t td.l,table.t th.l{text-align:left}
+table.t tr.det>td{text-align:left}
 table.t td.c,table.t th.c{text-align:center}
 table.t tr.out td{color:var(--mute)}
 table.t tr.det td{background:#fafbfd;padding:12px 14px}
@@ -160,6 +164,7 @@ table.t tr.det td{background:#fafbfd;padding:12px 14px}
 .cmt-body{white-space:pre-wrap;line-height:1.65}
 .sendbox{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:6px;border-color:#c9d6ee}.sendbox>div{flex:1;min-width:240px}
 .sendbox.sent{background:var(--okbg);border-color:#bfe3cf}
+.aw-t td[rowspan]{border-right:1px solid var(--line)}
 .awards .aw-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}.awards h3{font-size:16px}
 .rank.r1{background:#f6c445;color:#5a4300}.rank.r2{background:#d6dbe3;color:#3a4250}.rank.r3{background:#e6b48a;color:#5a3412}
 s.drop{color:var(--mute)}
@@ -584,7 +589,7 @@ function renderTop() {
 /* ===== 랜딩·로그인 ===== */
 function renderLanding(msg) {
   renderTop();
-  const areaRows = AREAS.map(a => `<tr><td><b>${a.name}</b></td><td>${a.items.map(i => `${CRIT[i].name} <span class="muted">(${CRIT[i].max})</span>`).join('<br>')}</td><td class="n"><b>${a.max}</b></td></tr>`).join('');
+  const areaRows = AREAS.map(a => `<tr><td><b>${a.name}</b></td><td class="l">${a.items.map(i => `${CRIT[i].name} <span class="muted">(${CRIT[i].max})</span>`).join('<br>')}</td><td class="n"><b>${a.max}</b></td></tr>`).join('');
   $('#app').innerHTML = `
   <section class="hero"><div class="wrap">
     <div class="eyebrow">2026 AX 교육·행정혁신 우수사례 육성 프로그램</div>
@@ -681,7 +686,7 @@ function renderHome() {
         </div>`; }).join('')}</div>`).join('')}
     <div style="height:40px"></div></div>`;
   if ($('#send')) $('#send').onclick = async () => {
-    const rows = D.teams.map(t => `<tr><td>${t.team_no}</td><td>${h(t.title)}</td><td class="n"><b>${sum(myScore(t.team_no).items)}</b></td></tr>`).join('');
+    const rows = D.teams.map(t => `<tr><td>${t.team_no}</td><td class="l">${h(t.title)}</td><td class="n"><b>${sum(myScore(t.team_no).items)}</b></td></tr>`).join('');
     if (!await modal('결과를 전송할까요?', `<p class="muted" style="margin-top:0">전송하면 점수가 확정되어 더 이상 수정할 수 없습니다.</p>
       <div class="tbl-wrap" style="max-height:45vh;overflow:auto"><table class="t"><thead><tr><th>번호</th><th>사례명</th><th class="n">총점</th></tr></thead><tbody>${rows}</tbody></table></div>`,
       [{ label:'취소', value:false }, { label:'전송', value:true, cls:'pri' }])) return;
@@ -902,18 +907,28 @@ function statusCell(r) {
 function awardSummary(C) {
   const cfg = awCfg(), grand = C.ok.filter(r => r.award === '대상');
   const pick = (fd, name) => C.ok.filter(r => r.team.field === fd && r.award === name);
-  const line = rs => rs.length ? rs.map(r => `<b>${r.team.team_no}. ${h(r.team.title)}</b>${r.tie ? ' <span class="badge b-warn">동점</span>' : ''}`).join('<br>') : '<span class="muted">해당 팀 없음</span>';
   const gap = (have, want) => have < want ? ` <span class="badge b-warn">${want - have}팀 부족</span>` : have > want ? ` <span class="badge b-warn">${have - want}팀 초과(동점)</span>` : '';
   const tiers = AW_NAMES.map(name => ({ name, fs: C.fields.filter(fd => awN(cfg.f(fd), name) > 0) })).filter(x => x.fs.length);
   const none = !cfg.grand && !tiers.length;
+  // 표 한 줄 = 수상팀 한 팀. 구분은 상 단위로, 분야·규모는 분야 단위로 칸을 합침
+  const groups = [];
+  if (cfg.grand) groups.push({ name:'대상', parts:[{ fd:'전체', want:cfg.grand, rs:grand }] });
+  tiers.forEach(tr => groups.push({ name:tr.name, parts:tr.fs.map(fd => ({ fd, want:awN(cfg.f(fd), tr.name), rs:pick(fd, tr.name) })) }));
+  const team = r => `<td class="l"><b>${h(r.team.title)}</b>${r.tie ? ' <span class="badge b-warn">동점</span>' : ''}</td>
+    <td class="tiny">${h(r.team.members)}</td><td class="n">${f(r.rawAvg)}</td><td class="n"><b>${f(r.zAvg, 3)}</b></td>`;
+  const body = groups.map(g => {
+    const span = sum(g.parts.map(pt => Math.max(1, pt.rs.length)));
+    return g.parts.map((pt, pi) => (pt.rs.length ? pt.rs : [null]).map((r, ri) => `<tr>
+      ${pi === 0 && ri === 0 ? `<td rowspan="${span}"><span class="badge ${AW_CLS[g.name]}">${g.name}</span></td>` : ''}
+      ${ri === 0 ? `<td rowspan="${Math.max(1, pt.rs.length)}">${h(pt.fd)}</td><td rowspan="${Math.max(1, pt.rs.length)}">${pt.want}팀${gap(pt.rs.length, pt.want)}</td>` : ''}
+      ${r ? team(r) : '<td class="l"><span class="muted">해당 팀 없음</span></td><td></td><td></td><td></td>'}</tr>`).join('')).join('');
+  }).join('');
   return `<div class="card pad awards">
     <div class="aw-head"><h3>시상 결과 ${C.complete ? '' : '<span class="badge b-warn">잠정</span>'}</h3><span class="muted tiny">대상은 전체 순위, 우수상·장려상은 대상 팀을 뺀 분야별 순위</span><span style="flex:1"></span><button class="btn sm noprint" id="aws">시상 규모 설정</button></div>
     ${none ? '<div class="muted">시상 규모가 모두 0팀으로 설정되어 있습니다(시상 없음). ‘시상 규모 설정’에서 바꿀 수 있습니다.</div>' : `
-    <table class="t"><thead><tr><th>구분</th><th>분야</th><th>규모</th><th>수상팀</th></tr></thead><tbody>
-      ${cfg.grand ? `<tr><td><span class="badge aw0">대상</span></td><td>전체</td><td>${cfg.grand}팀${gap(grand.length, cfg.grand)}</td><td>${line(grand)}</td></tr>` : ''}
-      ${tiers.map(tr => tr.fs.map((fd, i) => `<tr>${i ? '' : `<td rowspan="${tr.fs.length}"><span class="badge ${AW_CLS[tr.name]}">${tr.name}</span></td>`}
-        <td>${h(fd)}</td><td>${awN(cfg.f(fd), tr.name)}팀${gap(pick(fd, tr.name).length, awN(cfg.f(fd), tr.name))}</td><td>${line(pick(fd, tr.name))}</td></tr>`).join('')).join('')}
-    </tbody></table>`}
+    <div class="tbl-wrap"><table class="t aw-t"><thead><tr><th>구분</th><th>분야</th><th>규모</th><th>수상팀</th><th>참가자</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th></tr></thead><tbody>
+      ${body}
+    </tbody></table></div>`}
     ${C.ok.some(r => r.tie && r.award) ? '<div class="tiny" style="color:var(--warn);margin-top:8px">시상 경계에 동점(Z점수·원점수·문항 3 평균이 모두 같음)이 있습니다. 심사위원회에서 확인하세요.</div>' : ''}
   </div>`;
 }
@@ -942,7 +957,7 @@ function paneResult() {
           <td class="c">${r.ok ? `<span class="rank ${r.rank <= 3 ? 'r' + r.rank : ''}">${r.rank}</span>` : '–'}</td>
           <td class="c">${r.frank ?? (r.award === '대상' ? '<span class="tiny muted">대상</span>' : '–')}</td>
           <td>${r.team.team_no}</td>
-          <td><b>${h(r.team.title)}</b><div class="tiny muted">${h(r.team.field)} · ${h(r.team.theme)}</div>
+          <td class="l"><b>${h(r.team.title)}</b><div class="tiny muted">${h(r.team.field)} · ${h(r.team.theme)}</div>
             ${r.exc ? `<div class="tiny" style="color:var(--bad)">제외 사유: ${h(r.exc.reason)}</div>` : ''}</td>
           <td class="tiny">${h(r.team.members)}</td>
           <td class="c"><span class="badge ${r.n >= r.expect ? 'b-ok' : 'b-warn'}">${r.n}/${r.expect}</span></td>
@@ -1062,16 +1077,16 @@ function paneProgress() {
     <div class="tbl-wrap"><table class="t mx">
       <thead><tr><th>평가팀</th>${D.judges.map(j => `<th class="c" title="${h(j.name)}">${jhead(j.name)}</th>`).join('')}<th class="c">전송</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th></tr></thead>
       <tbody>${D.teams.map(t => { const r = row(t.team_no);
-        return `<tr><td class="tm"><b>${t.team_no}.</b> ${h(t.title)}</td>${D.judges.map(j => `<td class="cell" data-j="${j.no}" data-t="${t.team_no}">${cell(j.no, t.team_no)}</td>`).join('')}
+        return `<tr><td class="tm l"><b>${t.team_no}.</b> ${h(t.title)}</td>${D.judges.map(j => `<td class="cell" data-j="${j.no}" data-t="${t.team_no}">${cell(j.no, t.team_no)}</td>`).join('')}
           <td class="c"><span class="badge ${r.n >= r.expect ? 'b-ok' : 'b-warn'}">${r.n}/${r.expect}</span></td>
           <td class="n">${f(r.rawAvg)}</td><td class="n"><b>${r.zAvg == null ? '–' : zf(r.zAvg)}</b></td></tr>`; }).join('')}
-      <tr><td class="muted">위원별 평가 완료</td>${D.judges.map(j => { const st = C.J[j.no];
+      <tr><td class="muted l">위원별 평가 완료</td>${D.judges.map(j => { const st = C.J[j.no];
         const full = D.scores.filter(s => s.judge_no === j.no && isFull(s)).length;
         return `<td class="c"><span class="badge ${full >= st.expect ? 'b-navy' : 'b-warn'}">${full}/${st.expect}</span></td>`; }).join('')}<td></td><td></td><td></td></tr>
-      <tr><td class="muted">결과 전송</td>${D.judges.map(j => sentAt(j.no)
+      <tr><td class="muted l">결과 전송</td>${D.judges.map(j => sentAt(j.no)
         ? `<td class="c"><span class="badge b-ok" title="${new Date(sentAt(j.no)).toLocaleString('ko-KR')}">전송됨</span><div style="margin-top:4px"><button class="btn sm us" data-j="${j.no}">전송 취소</button></div></td>`
         : '<td class="c"><span class="badge b-none">미전송</span></td>').join('')}<td></td><td></td><td></td></tr>
-      <tr><td class="muted">위원 평균 · 표준편차</td>${D.judges.map(j => { const st = C.J[j.no];
+      <tr><td class="muted l">위원 평균 · 표준편차</td>${D.judges.map(j => { const st = C.J[j.no];
         return `<td class="c tiny muted">${st.n ? f(st.m, 1) + ' · ' + f(st.sd, 1) : '–'}</td>`; }).join('')}<td></td><td></td><td></td></tr>
       </tbody></table></div>`;
   document.querySelectorAll('td.cell').forEach(td => td.onclick = async () => {
@@ -1157,8 +1172,8 @@ function paneTeams() {
     <div class="note">결과보고서는 PDF 파일(50MB 이하)로 올리면 심사위원이 평가표 화면에서 바로 보고 내려받을 수 있습니다. 시제품 실행링크·시연 영상 주소는 입력 후 저장하면 평가표에서 새 창으로 열립니다.</div>
     <div class="tbl-wrap"><table class="t">
       <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>시연 영상</th><th></th></tr></thead>
-      <tbody>${D.teams.map(t => `<tr data-t="${t.team_no}"><td>${t.team_no}</td><td style="min-width:200px">${h(t.title)}</td>
-        <td style="min-width:190px">${fcell(t)}</td>
+      <tbody>${D.teams.map(t => `<tr data-t="${t.team_no}"><td>${t.team_no}</td><td class="l" style="min-width:200px">${h(t.title)}</td>
+        <td class="l" style="min-width:190px">${fcell(t)}</td>
         ${['demo_url','video_url'].map(k => `<td><input class="inp" data-k="${k}" value="${h(t[k])}" placeholder="https://" style="min-width:150px"></td>`).join('')}
         <td><button class="btn sm ts">저장</button></td></tr>`).join('')}</tbody></table></div>`;
   document.querySelectorAll('.ts').forEach(b => b.onclick = async () => {
