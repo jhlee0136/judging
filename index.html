@@ -605,7 +605,7 @@ function renderHome() {
     <div class="note"><b>심사 시 유의사항</b><ul>
       <li>실행링크 접속에 문제가 있으면 즉시 감점하지 말고 첨부된 시연 영상으로 기능 실체를 먼저 확인합니다.</li>
       <li>최고 배점(20점)인 ‘문제 해결 및 목적 달성도’는 결과보고서 기획 내용과 시제품 작동 모습이 부합하는지 엄격히 점검합니다.</li>
-      <li>제출한 평가는 수정할 수 없습니다. 수정이 필요하면 사무국에 제출 취소를 요청하세요. 이해관계가 있는 사례는 사무국에 회피를 신청하세요.</li>
+      <li>제출한 평가는 수정할 수 없습니다. 수정이 필요하면 사업통합관리팀(2453)에 제출 취소를 요청하세요.</li>
     </ul></div>
     ${fields.map(fd => `<div class="grp">${h(fd)} <span class="badge b-navy">${D.teams.filter(t => t.field === fd).length}</span></div>
       <div class="teams">${D.teams.filter(t => t.field === fd).map(t => { const s = myScore(t.team_no);
@@ -643,7 +643,7 @@ function renderTeam(no) {
       <h1>${h(t.title)}</h1>
       <div class="links">${pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span>결과보고서 (등록 전)</span>'}${link(t.demo_url, '시제품 실행링크')}${link(t.video_url, '시연 영상')}</div>
     </div>
-    ${lock ? `<div class="note">${D.closed ? '심사가 마감되어 평가를 수정할 수 없습니다.' : '제출 완료된 평가입니다. 수정이 필요하면 사무국에 제출 취소를 요청하세요.'}</div>` : ''}
+    ${lock ? `<div class="note">${D.closed ? '심사가 마감되어 평가를 수정할 수 없습니다.' : '제출 완료된 평가입니다. 수정이 필요하면 사업통합관리팀(2453)에 제출 취소를 요청하세요.'}</div>` : ''}
     <div class="legend">
       <div><b>S (100%)</b>요구사항을 완벽하게 수용하고 구체적 증빙과 작동 실체가 확인됨</div>
       <div><b>A~B (80~60%)</b>대부분 충족하나 일부 세부 논리나 기능 완성도가 미흡함</div>
