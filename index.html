@@ -144,9 +144,7 @@ table.t tr.det td{background:#fafbfd;padding:12px 14px}
 .rank.r1{background:#f6c445;color:#5a4300}.rank.r2{background:#d6dbe3;color:#3a4250}.rank.r3{background:#e6b48a;color:#5a3412}
 s.drop{color:var(--mute)}
 .mx td.cell{text-align:center;cursor:pointer;font-variant-numeric:tabular-nums}
-.mx td.tm{min-width:300px;line-height:1.45}
-.mx th.jh{white-space:normal;line-height:1.35;min-width:84px}
-.mx th.jh span{font-weight:500}
+.mx td.tm{white-space:nowrap}
 .mx td.cell:hover{background:#f2f6fc}
 .cell .badge{min-width:46px}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
@@ -730,8 +728,8 @@ function detail(r, C) {
     </tbody></table></div><div class="tiny muted" style="margin-top:6px">취소선은 최고·최저로 제외된 점수입니다. 마지막 줄의 원점수·Z점수는 제외 후 평균입니다.</div>`;
 }
 
-// '성명(직책)'을 두 줄로 나눠 위원 열 폭을 줄임
-const jhead = name => { const m = String(name).match(/^(.*?)\s*(\(.+\))$/); return m ? `${h(m[1])}<br><span>${h(m[2])}</span>` : h(name); };
+// 진행 현황 머리글은 '성명(직책)'에서 성명만 표시
+const jhead = name => h(String(name).replace(/\s*\(.+\)$/, ''));
 function paneProgress() {
   const C = compute(), row = t => C.rows.find(r => r.team.team_no === t);
   const zf = z => (z > 0 ? '+' : '') + z.toFixed(3);
@@ -748,7 +746,7 @@ function paneProgress() {
   $('#pane').innerHTML = `
     <div class="toolbar"><span class="muted tiny">제출된 칸은 원점수와 Z점수를 함께 표시합니다(취소선 = 최고·최저로 제외). 칸을 누르면 제출 취소(재평가 허용)·점수 삭제·회피 지정을 할 수 있습니다. 30초마다 자동 갱신됩니다.</span></div>
     <div class="tbl-wrap"><table class="t mx">
-      <thead><tr><th>평가팀</th>${D.judges.map(j => `<th class="c jh">${jhead(j.name)}</th>`).join('')}<th class="c">제출</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th></tr></thead>
+      <thead><tr><th>평가팀</th>${D.judges.map(j => `<th class="c" title="${h(j.name)}">${jhead(j.name)}</th>`).join('')}<th class="c">제출</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th></tr></thead>
       <tbody>${D.teams.map(t => { const r = row(t.team_no);
         return `<tr><td class="tm"><b>${t.team_no}.</b> ${h(t.title)}</td>${D.judges.map(j => `<td class="cell" data-j="${j.no}" data-t="${t.team_no}">${cell(j.no, t.team_no)}</td>`).join('')}
           <td class="c"><span class="badge ${r.n >= r.expect ? 'b-ok' : 'b-warn'}">${r.n}/${r.expect}</span></td>
