@@ -628,7 +628,7 @@ function renderTeam(no) {
   if (!form || form.team !== no) form = { team:no, items: s ? s.items.slice() : Array(8).fill(null), comment: s ? s.comment : '', dirty:false };
   const lock = !!(s && s.submitted) || D.closed;
   const idx = D.teams.findIndex(x => x.team_no === no), prev = D.teams[idx - 1], next = D.teams[idx + 1];
-  const link = (u, l) => u ? `<a href="${h(u)}" target="_blank" rel="noopener">${l} ↗</a>` : `<span>${l} (등록 전)</span>`;
+  const link = (u, l, w) => u ? `<a href="${h(u)}" target="_blank" rel="noopener" class="pop" data-w="${w}">${l} ↗</a>` : `<span>${l} (등록 전)</span>`;
   const pdf = fileOf(no);
   $('#app').innerHTML = `<div class="wrap tpage" id="tp"><div class="tlayout">
     <aside class="card viewer" id="vw" hidden>
@@ -641,7 +641,7 @@ function renderTeam(no) {
     <div class="card tinfo">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="badge b-navy">${t.team_no}번 · ${h(t.field)}</span><span class="muted tiny">${h(t.theme)}</span><span style="margin-left:auto">${statusBadge(s)}</span></div>
       <h1>${h(t.title)}</h1>
-      <div class="links">${pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span>결과보고서 (등록 전)</span>'}${link(t.demo_url, '시제품 실행링크')}${link(t.video_url, '시연 영상')}</div>
+      <div class="links">${pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span>결과보고서 (등록 전)</span>'}${link(t.demo_url, '시제품 실행링크', 'jd_demo')}${link(t.video_url, '시연 영상', 'jd_video')}</div>
     </div>
     ${lock ? `<div class="note">${D.closed ? '심사가 마감되어 평가를 수정할 수 없습니다.' : '제출 완료된 평가입니다. 수정이 필요하면 사업통합관리팀(2453)에 제출 취소를 요청하세요.'}</div>` : ''}
     <div class="legend">
@@ -676,6 +676,13 @@ function renderTeam(no) {
     $('#tot').innerHTML = `${sum(form.items)}<small> / 100${left ? ` · 미선택 ${left}` : ''}</small>`;
   };
   paint();
+  // 실행링크·시연 영상은 팝업 창으로(화면의 80% 크기, 가운데). 팝업이 막히면 새 탭으로 열림
+  document.querySelectorAll('.links a.pop').forEach(a => a.onclick = e => {
+    const W = Math.round(screen.availWidth * .8), H = Math.round(screen.availHeight * .8);
+    const L = Math.round((screen.availWidth - W) / 2 + (screen.availLeft || 0)), T = Math.round((screen.availHeight - H) / 2 + (screen.availTop || 0));
+    const win = window.open(a.href, a.dataset.w, `popup=yes,width=${W},height=${H},left=${L},top=${T},resizable=yes,scrollbars=yes`);
+    if (win) { e.preventDefault(); try { win.opener = null; } catch {} win.focus(); }
+  });
   if (pdf) {
     // 넓은 화면: 왼쪽 결과보고서 · 오른쪽 평가표 / 좁은 화면: 평가표 위에 결과보고서
     const wide = () => matchMedia('(min-width: 1100px)').matches;
