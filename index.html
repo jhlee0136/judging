@@ -772,11 +772,18 @@ function renderTeam(no) {
         return toast(`저장했습니다. 선택하지 않은 문항이 ${miss.length}개 있어 ‘작성 중’으로 남습니다.`);
       }
       const left = D.teams.filter(x => !isFull(myScore(x.team_no)));
-      form = null;
-      if (!left.length) { toast('모든 팀 평가를 마쳤습니다. 목록에서 ‘결과 전송’을 누르세요.'); return go('#/home'); }
       const nx = left.find(x => x.team_no > no) || left[0];
-      toast(`${no}번 평가를 저장했습니다. 다음 평가할 팀으로 이동합니다.`);
-      go('#/team/' + nx.team_no);
+      const total = sum(myScore(no).items);
+      const v = await modal('평가를 저장했습니다', left.length
+        ? `<p class="muted" style="margin:0"><b>${h(t.title)}</b> · 총점 <b>${total}점</b></p>
+           <p style="margin:12px 0 0">아직 평가하지 않은 팀이 <b>${left.length}개</b> 있습니다. 모든 팀을 평가한 뒤 목록 화면에서 <b>결과 전송</b>을 누르기 전까지는 언제든 다시 열어 수정할 수 있습니다.</p>`
+        : `<p class="muted" style="margin:0"><b>${h(t.title)}</b> · 총점 <b>${total}점</b></p>
+           <p style="margin:12px 0 0">모든 팀 평가를 마쳤습니다. 목록 화면에서 점수를 확인한 뒤 <b>결과 전송</b>을 누르세요. 전송하기 전까지는 수정할 수 있고, 전송한 뒤에는 수정할 수 없습니다.</p>`,
+        left.length ? [{ label:'목록으로', value:'home' }, { label:`다음 팀 평가 (${nx.team_no}번)`, value:'next', cls:'pri' }]
+                    : [{ label:'계속 보기', value:null }, { label:'목록에서 결과 전송', value:'home', cls:'pri' }]);
+      if (v === 'next') { form = null; go('#/team/' + nx.team_no); }
+      else if (v === 'home') { form = null; go('#/home'); }
+      else renderTeam(no);
     } catch (e) { toast(e.message); $('#sv').disabled = false; }
   };
 }
