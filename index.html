@@ -549,6 +549,7 @@ async function login(no, code) {
 }
 function logout() {
   if (form && form.dirty && !window.confirm('저장하지 않은 평가가 있습니다. 로그아웃할까요?')) return;
+  clearInterval(timer); timer = null;
   S = null; D = null; form = null; store.set('jd_sess', null); go('#/'); route();
 }
 
@@ -878,6 +879,7 @@ function compute() {
 
 /* ===== 관리자 ===== */
 async function adminDo(action, args = {}) {
+  if (!isAdmin()) return null;                 // 관리자 세션이 아니면 관리자 요청을 보내지 않음
   try { D = await rpc('jd_admin', { p_code:S.code, p_action:action, p_args:args }); return D; }
   catch (e) { if (!AUTH_FAIL.test(e.message)) toast(e.message); return null; }
 }
@@ -894,8 +896,14 @@ function renderAdmin() {
   document.querySelectorAll('.tab').forEach(b => b.onclick = () => go('#/admin/' + b.dataset.t));
   $('#rf').onclick = async () => { if (await adminDo('load')) { renderAdmin(); toast('최신 점수를 불러왔습니다.'); } };
   ({ result:paneResult, progress:paneProgress, comments:paneComments, judges:paneJudges, teams:paneTeams, settings:paneSettings })[adminTab]();
+  // 자동 갱신 타이머는 항상 하나만(다시 그릴 때마다 이전 타이머를 지움). 관리자 로그인이 아니면 즉시 멈춤
+  clearInterval(timer); timer = null;
   if (adminTab === 'result' || adminTab === 'progress' || adminTab === 'comments') {
-    timer = setInterval(async () => { if (document.hidden || document.querySelector('.modal')) return; if (await adminDo('load')) renderAdmin(); }, 30000);
+    const id = timer = setInterval(async () => {
+      if (!isAdmin() || timer !== id) return clearInterval(id);
+      if (document.hidden || document.querySelector('.modal')) return;
+      if (await adminDo('load') && isAdmin() && timer === id) renderAdmin();
+    }, 30000);
   }
 }
 
