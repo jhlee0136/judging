@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>AX 우수사례 심사</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
 :root{
   /* 심사기준표: 종이 위 먹색 잉크, 괘선으로 나누고 인주색은 대상 표시에만 */
@@ -261,6 +261,111 @@ table.t.compact td.nowrap{white-space:nowrap;max-width:330px;overflow:hidden;tex
 table.t.compact .inp{padding:3px 8px;font-size:13px;min-width:130px}
 .fline{display:flex;align-items:center;gap:6px;white-space:nowrap}
 .fline .fst{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+/* ===== 마감: 같은 색 조합 위에 글꼴 대비·여백·괘선 굵기로 품격을 더함 ===== */
+:root{ --pine:#2C5A50; --frost:#E4ECE9; --display:"Hahmlet","IBM Plex Sans KR",serif; }
+a{color:var(--pine)}
+:focus-visible{outline-color:var(--pine)}
+h1,h2,.awards h3,.cmt-head h3,.modal h3,.total,.kpi b,.code,.team .no{font-family:var(--display);letter-spacing:-.015em}
+h1,h2{font-weight:600}
+.top .brand{font-family:var(--display);font-weight:600;font-size:16.5px;letter-spacing:-.01em}
+
+/* 첫 화면 머리말: 넓은 여백, 큰 제목, 보고서 표지 같은 두 줄 괘선 */
+.masthead{border-bottom:0;position:relative}
+.masthead:after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;border-top:2px solid var(--ink);border-bottom:1px solid var(--ink)}
+.masthead .wrap{padding-top:64px;padding-bottom:44px}
+.masthead h1{font-size:clamp(28px,4.6vw,48px);line-height:1.2;font-weight:600}
+.masthead p{margin-top:14px;font-size:16px;line-height:1.7}
+.spec{margin-top:28px;border-color:var(--rule)}
+.spec>div{padding:10px 20px}
+.spec dd{font-family:var(--display);font-weight:600;font-size:16px}
+.land{padding-top:36px;gap:28px}
+.sheetform{padding:26px 28px 20px}
+.sheetform h2,.land .card.pad>h2{font-size:21px!important;margin-bottom:16px!important}
+.land .card.pad{padding:26px 28px}
+.login h2{font-size:21px}
+.areas thead th{background:var(--frost)}
+.areas td.sa{background:#F8FAF9}
+.grade-key{border-color:var(--rule)}
+.steps li:before{color:var(--pine);font-family:var(--display);font-size:17px;top:9px}
+.steps li:first-child:before{top:1px}
+.steps .fx{border-left-color:var(--pine);background:var(--frost)}
+
+/* 공통 판: 여백을 넉넉히, 모서리를 조금 더 부드럽게 */
+.card{border-radius:8px}
+.pad{padding:24px 26px}
+.btn{padding:9px 16px;letter-spacing:.01em}
+.btn.sm{padding:6px 12px}
+.btn.pri{background:var(--ink)}
+.btn.pri:hover{background:var(--pine);border-color:var(--pine)}
+.inp{padding:10px 12px}
+
+/* 페이지 머리 */
+.pagehead{margin:40px 0 22px}
+.pagehead h1{font-size:30px}
+.bar{height:4px}
+.bar i{background:var(--pine)}
+
+/* 표: 회색 채움 대신 서리색 머리글과 먹색 밑줄 */
+.tbl-wrap{border-radius:8px}
+table.t th{background:var(--frost);color:var(--ink);font-weight:600;border-bottom:1.5px solid var(--ink)}
+table.t td{border-bottom-color:#E8ECEA}
+table.t tbody tr:hover td{background:#FAFBFA}
+table.t tr.det>td,table.t tr.det:hover>td{background:#F8FAF9}
+
+/* 탭 */
+.tabs{gap:6px}
+.tab{font-size:15px;padding:12px 4px;margin-right:14px}
+.tab.on{border-bottom-width:2px}
+
+/* 요약 수치 */
+.kpis{border-radius:8px}
+.kpis .kpi{padding:16px 20px}
+.kpi b{font-size:26px;font-weight:600;line-height:1.2}
+
+/* 시상 결과 */
+.awards h3{font-size:21px}
+.awards{padding:26px 28px}
+
+/* 평가팀 목록 */
+.grp{font-family:var(--display);font-size:18px;font-weight:600;margin:34px 0 10px}
+.grp .badge{font-family:"IBM Plex Sans KR",sans-serif;font-size:13px}
+.teams{border-radius:8px}
+.team{padding:15px 20px}
+.team .no{font-size:20px;font-weight:600;color:var(--pine)}
+.team .t{font-size:15.5px}
+.sendbox{padding:20px 24px}
+
+/* 평가표 */
+.tinfo{padding:22px 26px}
+.tinfo h1{font-size:25px;line-height:1.35}
+.area{margin:34px 0 10px}
+.area h2{font-size:21px}
+.item{padding:20px 24px}
+.ihead h3{font-size:16.5px}
+.ihead .pts{font-family:var(--display);font-size:18px;font-weight:600}
+.grades{border-radius:6px}
+.g{padding:10px 4px}
+.g b{font-family:var(--display);font-size:18px;font-weight:600}
+.g.on{background:var(--pine)}
+.g.on:disabled:hover{background:var(--pine)}
+.sticky .wrap{padding-top:12px;padding-bottom:12px}
+.total{font-size:30px;font-weight:600}
+.legend{border-radius:8px}
+.legend b{font-family:var(--display);font-weight:600;font-size:14.5px}
+
+/* 창 */
+.modal .card{border-radius:10px;padding:26px}
+.modal h3{font-size:21px;font-weight:600}
+.code{font-size:32px;font-weight:600}
+
+@media (max-width:560px){
+  .masthead .wrap{padding-top:40px;padding-bottom:32px}
+  .spec>div{padding:8px 14px}
+  .sheetform,.land .card.pad{padding:20px 18px}
+  .pagehead h1{font-size:25px}
+  .team{padding:12px 14px}
+}
+
 .printonly{display:none}
 .phead{margin-bottom:12px}
 .phead h1{font-size:18px;margin-bottom:6px}
@@ -680,7 +785,7 @@ function renderLanding(msg) {
     <td class="l">${CRIT[i].name}</td>${RT.map((r, g) => `<td class="pt${g ? '' : ' top1'}">${CRIT[i].max * r}</td>`).join('')}</tr>`).join('')).join('');
   $('#app').innerHTML = `
   <section class="masthead"><div class="wrap">
-    <h1>2026 AX 교육·행정혁신 우수사례 심사</h1>
+    <h1>2026 AX 교육·행정혁신<br>우수사례 심사</h1>
     <p>결과보고서와 시제품(실행링크·시연 영상)을 함께 보고, 8개 평가요소마다 S부터 E까지 6단계 등급을 매깁니다.</p>
     <dl class="spec">
       <div><dt>심사 대상</dt><dd>12개 사례</dd></div>
