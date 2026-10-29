@@ -280,7 +280,18 @@ table.t.compact .inp{padding:3px 8px;font-size:13px;min-width:130px}
   .awards,.formula,.cmt{break-inside:avoid}
   table.t tr.out td{color:#666}
   .rank{width:22px;height:22px}
+  /* 위원별 상세 포함: 화면 대신 사례별 쪽 문서만 인쇄 */
+  body.print-det #app,body.print-det #demo,body.print-det .top{display:none!important}
+  body.print-det #printdoc{display:block!important}
+  .ppage{break-after:page;page-break-after:always}
+  .ppage:last-child{break-after:auto;page-break-after:auto}
+  .ppage table,.ppage .awards{break-inside:avoid}
+  .pcase-top{font-size:10px;color:#666;margin-bottom:6px}
+  .pcase-title{font-size:16px;margin:0 0 10px}
+  .pcase-sum{margin-bottom:12px}
+  .pcase-det table.t{font-size:10.5px}
 }
+#printdoc{display:none}
 </style>
 </head>
 <body>
@@ -1021,11 +1032,7 @@ function paneResult() {
       <div class="card kpi"><b>${elig}</b><span class="muted tiny">시상 가능 (원점수 평균 ${CUT}점 이상${excN ? ` · 관리자 제외 ${excN}` : ''})</span></div>
       <div class="card kpi"><b>${C.complete ? '확정 가능' : '잠정'}</b><span class="muted tiny">${C.complete ? '모든 위원이 결과를 전송함' : '전송하지 않은 위원이 있어 Z점수가 바뀔 수 있음'}</span></div>
     </div>
-    <div class="printonly phead">
-      <h1>2026년 AX 교육·행정혁신 우수사례 육성 프로그램 심사 결과</h1>
-      <div>출력 일시 ${new Date().toLocaleString('ko-KR')} · 상태 <b>${C.complete ? '확정(모든 위원 전송)' : '잠정(미전송 위원 있음)'}</b> · 전송된 평가표 ${C.nSub} / ${sum(C.rows.map(r => r.expect))}</div>
-      <div>심사위원: ${D.judges.map(j => h(j.name)).join(', ')}</div>
-    </div>
+    ${printHead(C)}
     ${awardSummary(C)}
     <div class="toolbar" style="margin-top:16px"><span class="muted tiny">순위 = Z점수(최고·최저 제외 평균) 내림차순 · 동점이면 원점수 평균, 문항 3 평균 순 · 행을 누르면 위원별 상세 · ‘제외’로 시상에서 뺄 수 있음</span><span class="sp"></span>
       <label class="tiny muted" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="pdet"> 위원별 상세 포함</label><button class="btn sm pri" id="pr">PDF 저장</button><button class="btn sm" id="cx">CSV 내보내기</button></div>
@@ -1085,13 +1092,39 @@ function paneResult() {
   $('#cx').onclick = () => exportCSV(C);
 }
 // 결과·순위를 A4 가로로 인쇄 → 인쇄 창에서 'PDF로 저장'. 파일 이름은 문서 제목을 따름
+function printHead(C) {
+  return `<div class="printonly phead">
+      <h1>2026년 AX 교육·행정혁신 우수사례 육성 프로그램 심사 결과</h1>
+      <div>출력 일시 ${new Date().toLocaleString('ko-KR')}, 상태 <b>${C.complete ? '확정(모든 위원 전송)' : '잠정(미전송 위원 있음)'}</b>, 전송된 평가표 ${C.nSub} / ${sum(C.rows.map(r => r.expect))}</div>
+      <div>심사위원: ${D.judges.map(j => h(j.name)).join(', ')}</div>
+    </div>`;
+}
+// 위원별 상세 포함 인쇄용 문서: 1쪽 = 시상 결과, 2쪽부터 사례마다 1쪽(사례 요약 + 위원별 점수)
+function printDoc(C) {
+  const award = r => r.exc ? '시상 제외' : r.rawAvg == null ? '미집계' : !r.ok ? CUT + '점 미만' : (r.award || '선정 외');
+  const pages = C.rows.map((r, i) => `<section class="ppage">
+      <div class="pcase-top">2026 AX 우수사례 심사 결과, 사례별 상세 ${i + 1} / ${C.rows.length}</div>
+      <h2 class="pcase-title">${r.team.team_no}. ${h(r.team.title)}</h2>
+      <table class="t pcase-sum"><thead><tr><th>전체 순위</th><th>분야 순위</th><th>분야</th><th>지원주제</th><th>참가자</th><th>전송</th><th>원점수 평균</th><th>Z점수 평균</th><th>시상</th></tr></thead>
+        <tbody><tr><td>${r.ok ? r.rank : '–'}</td><td>${r.frank ?? (r.award === '대상' ? '대상' : '–')}</td><td>${h(r.team.field)}</td><td>${h(r.team.theme)}</td>
+          <td>${h(r.team.members)}</td><td>${r.n}/${r.expect}</td><td>${f(r.rawAvg)}</td><td><b>${f(r.zAvg, 3)}</b></td><td><b>${award(r)}</b></td></tr>
+        ${r.exc ? `<tr><td colspan="9" class="l">제외 사유: ${h(r.exc.reason)}</td></tr>` : ''}</tbody></table>
+      <div class="pcase-det">${detail(r, C)}</div>
+    </section>`).join('');
+  return `<section class="ppage">${printHead(C)}${awardSummary(C)}</section>${pages}`;
+}
 function printResult(withDet) {
-  const keep = new Set(openDet), title = document.title, C = compute();
-  if (withDet) { C.rows.forEach(r => r.n && openDet.add(r.team.team_no)); paneResult(); }
-  document.title = `AX우수사례_심사결과_${stamp()}${C.complete ? '' : '_잠정'}`;
+  const title = document.title, C = compute();
+  document.title = `AX우수사례_심사결과${withDet ? '_사례별상세' : ''}_${stamp()}${C.complete ? '' : '_잠정'}`;
+  let doc = null;
+  if (withDet) {
+    doc = document.createElement('div'); doc.id = 'printdoc'; doc.innerHTML = printDoc(C);
+    document.body.appendChild(doc); document.body.classList.add('print-det');
+  }
   const done = () => {
     window.removeEventListener('afterprint', done);
-    document.title = title; openDet.clear(); keep.forEach(n => openDet.add(n)); paneResult();
+    document.title = title;
+    if (doc) { doc.remove(); document.body.classList.remove('print-det'); }
   };
   window.addEventListener('afterprint', done);
   toast('인쇄 창의 ‘대상(프린터)’에서 ‘PDF로 저장’을 고르세요.');
