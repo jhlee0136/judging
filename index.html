@@ -153,6 +153,10 @@ table.t tr.out td{color:var(--mute)}
 table.t tr.det td{background:#fafbfd;padding:12px 14px}
 .rank{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--soft);font-weight:800;color:var(--navy)}
 .aw0{background:#f6c445;color:#5a4300}.aw1{background:#e4eaf5;color:var(--navy)}.aw2{background:var(--okbg);color:var(--ok)}
+.cmt-team{margin-bottom:12px}
+.cmt-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}.cmt-head h3{font-size:16px}.cmt-head .sp{flex:1}
+.cmt{border-top:1px solid var(--line);padding:12px 0 10px}.cmt-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.cmt-body{white-space:pre-wrap;line-height:1.65}
 .awards .aw-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}.awards h3{font-size:16px}
 .rank.r1{background:#f6c445;color:#5a4300}.rank.r2{background:#d6dbe3;color:#3a4250}.rank.r3{background:#e6b48a;color:#5a3412}
 s.drop{color:var(--mute)}
@@ -200,7 +204,7 @@ s.drop{color:var(--mute)}
   table.t{font-size:10.5px}
   table.t th,table.t td{padding:5px 6px}
   table.t tr{break-inside:avoid}
-  .awards,.formula{break-inside:avoid}
+  .awards,.formula,.cmt{break-inside:avoid}
   table.t tr.out td{color:#666}
   .rank{width:22px;height:22px}
 }
@@ -796,7 +800,7 @@ async function adminDo(action, args = {}) {
 const jname = no => D.judges.find(j => j.no === no)?.name || '심사위원 ' + no;
 function renderAdmin() {
   renderTop();
-  const tabs = [['judges','심사위원 관리'],['teams','평가자료 등록'],['progress','진행 현황'],['settings','심사 마감'],['result','결과·순위']];
+  const tabs = [['judges','심사위원 관리'],['teams','평가자료 등록'],['progress','진행 현황'],['comments','심사 의견'],['settings','심사 마감'],['result','결과·순위']];
   if (!tabs.some(t => t[0] === adminTab)) adminTab = 'judges';
   $('#app').innerHTML = `<div class="wrap">
     <div class="pagehead"><div><h1>평가점수 관리</h1><div class="muted">${D.closed ? '<span class="badge b-bad">심사 마감</span>' : '<span class="badge b-ok">심사 진행 중</span>'} <span class="tiny">마지막 갱신 ${new Date().toLocaleTimeString('ko-KR')}</span></div></div>
@@ -805,8 +809,8 @@ function renderAdmin() {
     <div id="pane"></div><div style="height:40px"></div></div>`;
   document.querySelectorAll('.tab').forEach(b => b.onclick = () => go('#/admin/' + b.dataset.t));
   $('#rf').onclick = async () => { if (await adminDo('load')) { renderAdmin(); toast('최신 점수를 불러왔습니다.'); } };
-  ({ result:paneResult, progress:paneProgress, judges:paneJudges, teams:paneTeams, settings:paneSettings })[adminTab]();
-  if (adminTab === 'result' || adminTab === 'progress') {
+  ({ result:paneResult, progress:paneProgress, comments:paneComments, judges:paneJudges, teams:paneTeams, settings:paneSettings })[adminTab]();
+  if (adminTab === 'result' || adminTab === 'progress' || adminTab === 'comments') {
     timer = setInterval(async () => { if (document.hidden || document.querySelector('.modal')) return; if (await adminDo('load')) renderAdmin(); }, 30000);
   }
 }
@@ -926,7 +930,7 @@ function detail(r, C) {
     <thead><tr><th>심사위원</th>${CRIT.map((c, i) => `<th class="n" title="${c.name}">문항${i + 1}<br><span style="font-weight:500">${c.max}</span></th>`).join('')}<th class="n">원점수</th><th class="n">위원 평균·표준편차</th><th class="n">Z점수</th></tr></thead>
     <tbody>${r.ent.map((e, k) => { const st = C.J[e.judge];
       const rs = r.rawDrop.includes(k), zs = r.zDrop.includes(k);
-      return `<tr><td>${h(jname(e.judge))}${e.comment ? `<div class="tiny muted" style="max-width:260px;white-space:pre-wrap">${h(e.comment)}</div>` : ''}</td>
+      return `<tr><td>${h(jname(e.judge))}</td>
         ${e.items.map(v => `<td class="n">${v}</td>`).join('')}
         <td class="n">${rs ? `<s class="drop" title="최고·최저 제외">${e.raw}</s>` : `<b>${e.raw}</b>`}</td>
         <td class="n tiny">${f(st.m, 1)} · ${f(st.sd, 1)}${st.n < st.expect ? ` <span class="badge b-warn">${st.n}/${st.expect}</span>` : ''}</td>
@@ -1062,6 +1066,42 @@ function paneTeams() {
     try { await rpc('jd_file_del', { p_code:S.code, p_team:t }); await adminDo('load'); toast('삭제했습니다.'); renderAdmin(); }
     catch (e) { toast(e.message); }
   });
+}
+
+// 심사 의견: 사례별로 위원 의견을 모아 봄(제출·임시저장 모두, 임시저장은 표시)
+let cmtFilter = { team:'all', only:true };
+function paneComments() {
+  const list = D.teams.map(t => ({ t, rows: D.scores.filter(s => s.team_no === t.team_no && (s.comment || '').trim())
+    .sort((a, b) => a.judge_no - b.judge_no) }));
+  const shown = list.filter(x => (cmtFilter.team === 'all' || x.t.team_no === +cmtFilter.team) && (!cmtFilter.only || x.rows.length));
+  const total = sum(list.map(x => x.rows.length));
+  $('#pane').innerHTML = `
+    <div class="printonly phead"><h1>2026년 AX 교육·행정혁신 우수사례 심사 의견</h1><div>출력 일시 ${new Date().toLocaleString('ko-KR')} · 의견 ${total}건</div></div>
+    <div class="toolbar">
+      <select class="inp" id="cf" style="max-width:360px"><option value="all">전체 사례</option>${D.teams.map(t => `<option value="${t.team_no}" ${+cmtFilter.team === t.team_no ? 'selected' : ''}>${t.team_no}. ${h(t.title)}</option>`).join('')}</select>
+      <label class="tiny muted" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="co" ${cmtFilter.only ? 'checked' : ''}> 의견 있는 사례만</label>
+      <span class="sp"></span><span class="muted tiny">의견 ${total}건</span>
+      <button class="btn sm" id="cp">PDF 저장</button><button class="btn sm" id="cc">CSV 내보내기</button>
+    </div>
+    ${shown.length ? shown.map(({ t, rows }) => `
+      <div class="card pad cmt-team">
+        <div class="cmt-head"><span class="badge b-navy">${t.team_no}번 · ${h(t.field)}</span><h3>${h(t.title)}</h3><span class="muted tiny">${h(t.members)}</span><span class="sp"></span><span class="muted tiny">의견 ${rows.length}건</span></div>
+        ${rows.length ? rows.map(r => `<div class="cmt">
+            <div class="cmt-meta"><b>${h(jname(r.judge_no))}</b>
+              ${r.submitted ? `<span class="badge b-ok">제출 · ${sum(r.items)}점</span>` : `<span class="badge b-warn">임시저장 · ${sum(r.items)}점</span>`}
+              <span class="muted tiny">${new Date(r.updated_at).toLocaleString('ko-KR')}</span></div>
+            <div class="cmt-body">${h(r.comment)}</div></div>`).join('') : '<div class="muted tiny" style="padding:8px 0">작성된 의견이 없습니다.</div>'}
+      </div>`).join('') : '<div class="card pad muted">조건에 맞는 의견이 없습니다.</div>'}`;
+  $('#cf').onchange = e => { cmtFilter.team = e.target.value; paneComments(); };
+  $('#co').onchange = e => { cmtFilter.only = e.target.checked; paneComments(); };
+  $('#cp').onclick = () => {
+    const title = document.title; document.title = `AX우수사례_심사의견_${stamp()}`;
+    const done = () => { window.removeEventListener('afterprint', done); document.title = title; };
+    window.addEventListener('afterprint', done);
+    toast('인쇄 창의 ‘대상(프린터)’에서 ‘PDF로 저장’을 고르세요.'); setTimeout(() => window.print(), 100);
+  };
+  $('#cc').onclick = () => download(`AX우수사례_심사의견_${stamp()}.csv`, [['번호','분야','사례명','참가자','심사위원','상태','원점수','심사의견','저장시각'],
+    ...list.flatMap(({ t, rows }) => rows.map(r => [t.team_no, t.field, t.title, t.members, jname(r.judge_no), r.submitted ? '제출' : '임시저장', sum(r.items), r.comment, new Date(r.updated_at).toLocaleString('ko-KR')]))]);
 }
 
 function paneSettings() {
