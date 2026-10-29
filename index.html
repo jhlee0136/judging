@@ -60,6 +60,7 @@ h1,h2,h3{letter-spacing:-.02em;margin:0}
 .areas th{color:var(--sub);font-weight:600;font-size:13px;background:var(--soft)}
 .areas td.n{white-space:nowrap;font-variant-numeric:tabular-nums}
 .areas th,.areas td{text-align:center}.areas td.l{text-align:left}
+.areas th,.areas td{border-right:1px solid var(--line)}.areas tr>:last-child{border-right:0}
 .steps{counter-reset:s;list-style:none;padding:0;margin:0}
 .steps li{position:relative;padding:0 0 12px 34px}
 .steps .fx{margin:8px 0 4px;padding:8px 12px;background:var(--soft);border-radius:8px;font-weight:600;color:var(--navy);font-size:14px}
@@ -153,6 +154,8 @@ table.t th,table.t td{text-align:center}
 table.t td.n,table.t th.n{text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
 table.t td.l,table.t th.l{text-align:left}
 table.t tr.det>td{text-align:left}
+table.t th,table.t td{border-right:1px solid var(--line)}
+table.t tr>:last-child{border-right:0}
 table.t td.c,table.t th.c{text-align:center}
 table.t tr.out td{color:var(--mute)}
 table.t tr.det td{background:#fafbfd;padding:12px 14px}
@@ -164,7 +167,6 @@ table.t tr.det td{background:#fafbfd;padding:12px 14px}
 .cmt-body{white-space:pre-wrap;line-height:1.65}
 .sendbox{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:6px;border-color:#c9d6ee}.sendbox>div{flex:1;min-width:240px}
 .sendbox.sent{background:var(--okbg);border-color:#bfe3cf}
-.aw-t td[rowspan]{border-right:1px solid var(--line)}
 .awards .aw-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}.awards h3{font-size:16px}
 .rank.r1{background:#f6c445;color:#5a4300}.rank.r2{background:#d6dbe3;color:#3a4250}.rank.r3{background:#e6b48a;color:#5a3412}
 s.drop{color:var(--mute)}
