@@ -323,7 +323,8 @@ const Mock = (() => {
   const err = e => ({ error: e });
   function call(fn, a) {
     const db = load(); let out;
-    if (fn === 'jd_login') out = auth(db, a.p_judge, a.p_code) ? payload(db, a.p_judge) : err('접속코드가 맞지 않습니다.');
+    if (fn === 'jd_judge_names') out = db.judges.filter(x => x.no > 0).map(x => ({ no:x.no, name:x.name }));
+    else if (fn === 'jd_login') out =auth(db, a.p_judge, a.p_code) ? payload(db, a.p_judge) : err('접속코드가 맞지 않습니다.');
     else if (fn === 'jd_save') out = mSave(db, a);
     else if (fn === 'jd_admin') out = mAdmin(db, a);
     save(db);
@@ -481,6 +482,9 @@ function renderLanding(msg) {
       </form>
     </div>
   </div>`;
+  rpc('jd_judge_names', {}).then(list => {
+    (list || []).forEach(j => { const o = document.querySelector(`#lno option[value="${j.no}"]`); if (o && j.name) o.textContent = j.name; });
+  }).catch(() => {});                   // 함수가 아직 없으면 '심사위원 N' 그대로
   $('#lf').onsubmit = async e => {
     e.preventDefault();
     const no = +$('#lno').value, code = $('#lcode').value.trim();
@@ -769,20 +773,20 @@ function paneProgress() {
 
 function paneJudges() {
   $('#pane').innerHTML = `
-    <div class="note">심사위원 이름을 입력하고 접속코드를 발급해 각 위원에게 전달하세요. 코드는 발급할 때 한 번만 표시되며, 다시 발급하면 이전 코드는 쓸 수 없습니다.</div>
+    <div class="note">심사위원 성명(직책)을 입력하고 접속코드를 발급해 각 위원에게 전달하세요. 입력한 성명(직책)은 로그인 화면의 구분 목록에 그대로 표시됩니다(예: 홍길동(기획처장)). 코드는 발급할 때 한 번만 표시되며, 다시 발급하면 이전 코드는 쓸 수 없습니다.</div>
     <div class="tbl-wrap"><table class="t">
-      <thead><tr><th>구분</th><th>이름(소속)</th><th class="c">접속코드</th><th class="c">제출</th><th></th></tr></thead>
+      <thead><tr><th>구분</th><th>성명(직책)</th><th class="c">접속코드</th><th class="c">제출</th><th></th></tr></thead>
       <tbody>${D.judges.map(j => { const exp = D.teams.length - D.recuse.filter(r => r.judge_no === j.no).length;
         const n = D.scores.filter(s => s.judge_no === j.no && s.submitted).length;
         return `<tr><td>심사위원 ${j.no}</td>
-          <td><input class="inp jn" data-j="${j.no}" value="${h(j.name)}" maxlength="40" style="max-width:280px"></td>
+          <td><input class="inp jn" data-j="${j.no}" value="${h(j.name)}" maxlength="40" placeholder="성명(직책)" style="max-width:280px"></td>
           <td class="c">${j.has_code ? '<span class="badge b-ok">발급됨</span>' : '<span class="badge b-none">미발급</span>'}</td>
           <td class="c">${n}/${exp}</td>
-          <td class="n"><button class="btn sm js" data-j="${j.no}">이름 저장</button> <button class="btn sm ${j.has_code ? '' : 'pri'} jc" data-j="${j.no}">${j.has_code ? '재발급' : '코드 발급'}</button></td></tr>`; }).join('')}
+          <td class="n"><button class="btn sm js" data-j="${j.no}">저장</button> <button class="btn sm ${j.has_code ? '' : 'pri'} jc" data-j="${j.no}">${j.has_code ? '재발급' : '코드 발급'}</button></td></tr>`; }).join('')}
       </tbody></table></div>`;
   document.querySelectorAll('.js').forEach(b => b.onclick = async () => {
     const name = document.querySelector(`.jn[data-j="${b.dataset.j}"]`).value.trim();
-    if (!name) return toast('이름을 입력하세요.');
+    if (!name) return toast('성명(직책)을 입력하세요.');
     if (await adminDo('set_judge', { judge_no:+b.dataset.j, name })) { renderAdmin(); toast('저장했습니다.'); }
   });
   document.querySelectorAll('.jc').forEach(b => b.onclick = async () => {
@@ -791,7 +795,7 @@ function paneJudges() {
     const r = await adminDo('issue_code', { judge_no:j });
     if (!r) return;
     renderAdmin();
-    const v = await modal(`${jname(j)} 접속코드`, `<div class="code">${h(r.new_code)}</div><p class="tiny muted">로그인 화면에서 ‘심사위원 ${j}’을 고르고 이 코드를 입력합니다. 이 창을 닫으면 다시 볼 수 없습니다.</p>`,
+    const v = await modal(`${jname(j)} 접속코드`, `<div class="code">${h(r.new_code)}</div><p class="tiny muted">로그인 화면의 구분에서 ‘${h(jname(j))}’을 고르고 이 코드를 입력합니다. 이 창을 닫으면 다시 볼 수 없습니다.</p>`,
       [{ label:'복사', value:'copy' }, { label:'닫기', value:null, cls:'pri' }]);
     if (v === 'copy') { try { await navigator.clipboard.writeText(r.new_code); toast('복사했습니다.'); } catch { toast('복사하지 못했습니다. 직접 적어 두세요.'); } }
   });
