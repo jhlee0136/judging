@@ -724,23 +724,30 @@ function detail(r, C) {
 }
 
 function paneProgress() {
+  const C = compute(), row = t => C.rows.find(r => r.team.team_no === t);
+  const zf = z => (z > 0 ? '+' : '') + z.toFixed(3);
   const cell = (j, t) => {
     if (D.recuse.some(r => r.judge_no === j && r.team_no === t)) return '<span class="badge b-none">회피</span>';
     const s = D.scores.find(x => x.judge_no === j && x.team_no === t);
     if (!s) return '<span class="muted">·</span>';
-    return s.submitted ? `<span class="badge b-ok">${sum(s.items)}</span>` : `<span class="badge b-warn">임시 ${sum(s.items)}</span>`;
+    if (!s.submitted) return `<span class="badge b-warn">임시 ${sum(s.items)}</span>`;
+    const r = row(t), k = r.ent.findIndex(e => e.judge === j), e = r.ent[k];
+    const raw = r.rawDrop.includes(k) ? `<s class="drop">${e.raw}</s>` : e.raw;
+    const z = r.zDrop.includes(k) ? `<s class="drop">${zf(e.z)}</s>` : zf(e.z);
+    return `<span class="badge b-ok">${raw}</span><div class="tiny muted" style="margin-top:3px">Z ${z}</div>`;
   };
   $('#pane').innerHTML = `
-    <div class="toolbar"><span class="muted tiny">칸을 누르면 제출 취소(재평가 허용)·점수 삭제·회피 지정을 할 수 있습니다. 30초마다 자동 갱신됩니다.</span></div>
+    <div class="toolbar"><span class="muted tiny">제출된 칸은 원점수와 Z점수를 함께 표시합니다(취소선 = 최고·최저로 제외). 칸을 누르면 제출 취소(재평가 허용)·점수 삭제·회피 지정을 할 수 있습니다. 30초마다 자동 갱신됩니다.</span></div>
     <div class="tbl-wrap"><table class="t mx">
-      <thead><tr><th>평가팀</th>${D.judges.map(j => `<th class="c">${h(j.name)}</th>`).join('')}<th class="c">제출</th></tr></thead>
-      <tbody>${D.teams.map(t => { const exp = D.judges.length - D.recuse.filter(r => r.team_no === t.team_no).length;
-        const n = D.scores.filter(s => s.team_no === t.team_no && s.submitted).length;
+      <thead><tr><th>평가팀</th>${D.judges.map(j => `<th class="c">${h(j.name)}</th>`).join('')}<th class="c">제출</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th></tr></thead>
+      <tbody>${D.teams.map(t => { const r = row(t.team_no);
         return `<tr><td><b>${t.team_no}.</b> ${h(t.title)}</td>${D.judges.map(j => `<td class="cell" data-j="${j.no}" data-t="${t.team_no}">${cell(j.no, t.team_no)}</td>`).join('')}
-          <td class="c"><span class="badge ${n >= exp ? 'b-ok' : 'b-warn'}">${n}/${exp}</span></td></tr>`; }).join('')}
-      <tr><td class="muted">위원별 제출</td>${D.judges.map(j => { const exp = D.teams.length - D.recuse.filter(r => r.judge_no === j.no).length;
-        const n = D.scores.filter(s => s.judge_no === j.no && s.submitted).length;
-        return `<td class="c"><span class="badge ${n >= exp ? 'b-ok' : 'b-warn'}">${n}/${exp}</span></td>`; }).join('')}<td></td></tr>
+          <td class="c"><span class="badge ${r.n >= r.expect ? 'b-ok' : 'b-warn'}">${r.n}/${r.expect}</span></td>
+          <td class="n">${f(r.rawAvg)}</td><td class="n"><b>${r.zAvg == null ? '–' : zf(r.zAvg)}</b></td></tr>`; }).join('')}
+      <tr><td class="muted">위원별 제출</td>${D.judges.map(j => { const st = C.J[j.no];
+        return `<td class="c"><span class="badge ${st.n >= st.expect ? 'b-ok' : 'b-warn'}">${st.n}/${st.expect}</span></td>`; }).join('')}<td></td><td></td><td></td></tr>
+      <tr><td class="muted">위원 평균 · 표준편차</td>${D.judges.map(j => { const st = C.J[j.no];
+        return `<td class="c tiny muted">${st.n ? f(st.m, 1) + ' · ' + f(st.sd, 1) : '–'}</td>`; }).join('')}<td></td><td></td><td></td></tr>
       </tbody></table></div>`;
   document.querySelectorAll('td.cell').forEach(td => td.onclick = async () => {
     const j = +td.dataset.j, t = +td.dataset.t;
