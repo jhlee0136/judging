@@ -398,6 +398,21 @@ table.t tr.det>td,table.t tr.det:hover>td{background:#F8FAF9}
 .tk-leg i.tk-full{background:var(--pine);border-color:var(--pine)} .tk-leg i.tk-draft{background:var(--warnbg)} .tk-leg i.tk-none{background:var(--sheet)}
 @media (max-width:560px){ .mixbar span{display:none} .mixbar>div{justify-content:center} .abar{width:140px} }
 @media print{ .sb-seg i{transition:none} .abar{width:160px} }
+.zlegend{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);gap:0;margin:0 0 14px;background:var(--sheet);border:1px solid var(--rule);border-radius:8px;font-size:13px}
+.zl-col{padding:14px 18px}
+.zl-col+.zl-col{border-left:1px solid var(--hair)}
+.zl-col>b{display:block;font-family:var(--display);font-size:15px;font-weight:600;margin-bottom:8px}
+.zl-keys{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:8px}
+.zl-keys span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.zlegend ul{margin:0;padding-left:18px;color:var(--sub)}
+.zlegend li{margin:3px 0}
+.zlegend li b{color:var(--ink)}
+.zl-area p{margin:0 0 8px;color:var(--sub)}
+.zl-areas{display:flex;flex-wrap:wrap;gap:6px 14px}
+.zl-areas span{display:inline-flex;align-items:center;gap:5px}
+.zl-areas i{width:10px;height:10px;border-radius:2px;display:inline-block}
+@media (max-width:860px){ .zlegend{grid-template-columns:1fr} .zl-col+.zl-col{border-left:0;border-top:1px solid var(--hair)} }
+@media print{ #pane>.zlegend{display:none!important} .zlegend{font-size:9.5px;break-inside:avoid;margin-bottom:8px} .zl-col{padding:6px 10px} .zl-col>b{font-size:11px;margin-bottom:4px} .zlegend li{margin:1px 0} }
 .printonly{display:none}
 .phead{margin-bottom:12px}
 .phead h1{font-size:18px;margin-bottom:6px}
@@ -1178,6 +1193,29 @@ function zPlot(r, lo, hi) {
     <line x1="6" x2="${W - 6}" y1="11" y2="11" stroke="#CBD3D0"/><line x1="${x(0).toFixed(1)}" x2="${x(0).toFixed(1)}" y1="5" y2="17" stroke="#CBD3D0"/>
     ${r.zAvg == null ? '' : `<line x1="${x(r.zAvg).toFixed(1)}" x2="${x(r.zAvg).toFixed(1)}" y1="2" y2="20" stroke="#1E2B2A" stroke-width="2"/>`}${dots}</svg>`;
 }
+// 위원별 Z 분포 읽는 법(기호 + 해석)
+function zLegend(lo, hi) {
+  const ic = body => `<svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true">${body}</svg>`;
+  const area = AREAS.map(a => `<span><i style="background:${a.c}"></i>${a.name}</span>`).join('');
+  return `<div class="zlegend">
+    <div class="zl-col">
+      <b>위원별 Z 분포 읽는 법</b>
+      <div class="zl-keys">
+        <span>${ic('<circle cx="11" cy="7" r="3.6" fill="#2C5A50" fill-opacity=".8"/>')}평균에 들어간 위원 점수</span>
+        <span>${ic('<circle cx="11" cy="7" r="3.6" fill="#fff" stroke="#8D9896" stroke-width="1.3"/>')}최고·최저로 제외된 점수</span>
+        <span>${ic('<line x1="11" x2="11" y1="0" y2="14" stroke="#1E2B2A" stroke-width="2"/>')}Z점수 평균(순위 기준)</span>
+        <span>${ic('<line x1="2" x2="20" y1="7" y2="7" stroke="#CBD3D0"/><line x1="11" x2="11" y1="2" y2="12" stroke="#CBD3D0"/>')}가운데 눈금 = 0(각 위원의 평소 수준)</span>
+      </div>
+      <ul>
+        <li>점이 <b>오른쪽</b>에 있을수록 그 위원이 자기 평소 점수보다 높게, <b>왼쪽</b>일수록 낮게 평가했다는 뜻입니다.</li>
+        <li>점들이 <b>한곳에 모여 있으면</b> 위원들의 판단이 일치한 것이고, <b>넓게 퍼져 있으면</b> 의견이 갈린 사례입니다. 퍼진 사례는 위원별 상세(행 클릭)와 심사 의견을 함께 확인하세요.</li>
+        <li>빈 점이 다른 점들과 멀리 떨어져 있다면, 한 위원의 치우친 평가가 최고·최저 제외로 걸러졌다는 뜻입니다.</li>
+        <li>가로축은 모든 사례에서 같은 범위(Z ${lo.toFixed(1)} ~ +${hi.toFixed(1)})이므로 사례끼리 위치를 바로 비교할 수 있습니다.</li>
+      </ul>
+    </div>
+    <div class="zl-col zl-area"><b>사례명 아래 막대</b><p>위원들이 준 영역별 평균 점수입니다. 막대 전체 길이가 원점수(100점 기준)이고, 색은 심사항목입니다.</p><div class="zl-areas">${area}</div></div>
+  </div>`;
+}
 function awardSummary(C) {
   const cfg = awCfg(), grand = C.ok.filter(r => r.award === '대상');
   const pick = (fd, name) => C.ok.filter(r => r.team.field === fd && r.award === name);
@@ -1222,6 +1260,7 @@ function paneResult() {
     ${awardSummary(C)}
     <div class="toolbar" style="margin-top:16px"><span class="muted tiny">순위 = Z점수(최고·최저 제외 평균) 내림차순 · 동점이면 원점수 평균, 문항 3 평균 순 · 행을 누르면 위원별 상세 · ‘제외’로 시상에서 뺄 수 있음</span><span class="sp"></span>
       <label class="tiny muted" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="pdet"> 위원별 상세 포함</label><button class="btn sm pri" id="pr">PDF 저장</button><button class="btn sm" id="cx">CSV 내보내기</button></div>
+    ${zLegend(zLo, zHi)}
     <h2 class="printonly ptitle">전체 순위</h2>
     <div class="tbl-wrap rank-tbl"><table class="t">
       <thead><tr><th class="c">전체<br>순위</th><th class="c">분야<br>순위</th><th>번호</th><th>사례명</th><th>참가자</th><th class="c">전송</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th><th class="c">위원별 Z 분포</th><th class="c">시상</th><th class="c noprint">관리</th></tr></thead>
@@ -1255,6 +1294,7 @@ function paneResult() {
         <li><b>시상</b>대상은 분야 구분 없이 전체 상위 ${awCfg().grand}팀, 우수상·장려상은 대상 수상팀을 뺀 분야별 순위로 정합니다(${C.fields.map(fd => `${h(fd)} 우수상 ${awCfg().f(fd).best}팀·장려상 ${awCfg().f(fd).enc}팀`).join(', ')}).</li>
         <li><b>집계 대상</b>위원이 ‘결과 전송’한 점수만 반영합니다. 전송하지 않은 위원이 있으면 결과는 ‘잠정’으로 표시됩니다.</li>
       </ol>
+      <div class="printonly" style="margin-top:10px">${zLegend(zLo, zHi)}</div>
     </div>`;
   document.querySelectorAll('tr[data-t]').forEach(tr => tr.onclick = () => {
     const n = +tr.dataset.t; openDet.has(n) ? openDet.delete(n) : openDet.add(n); paneResult();
