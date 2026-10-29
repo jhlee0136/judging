@@ -831,7 +831,7 @@ function renderDemo() {
 }
 function renderTop() {
   const who = S ? `<span class="who">${h(D?.judge?.name || '')}${isAdmin() ? '' : ' 위원님'}</span><button class="btn ghost sm" id="out">로그아웃</button>` : '';
-  $('#top').innerHTML = `<div class="brand" id="home">2026 AX 우수사례 심사<small>교육·행정혁신</small></div><div class="sp"></div>${who}`;
+  $('#top').innerHTML = `<div class="brand" id="home">온라인 심사 시스템</div><div class="sp"></div>${who}`;
   $('#home').onclick = () => go(S ? (isAdmin() ? '#/admin' : '#/home') : '#/');
   if (S) $('#out').onclick = logout;
 }
@@ -843,7 +843,7 @@ function renderLanding(msg) {
     <td class="l">${CRIT[i].name}</td>${RT.map((r, g) => `<td class="pt${g ? '' : ' top1'}">${CRIT[i].max * r}</td>`).join('')}</tr>`).join('')).join('');
   $('#app').innerHTML = `
   <section class="masthead"><div class="wrap">
-    <div class="mh-text"><h1>2026 AX <span style="white-space:nowrap">교육·행정혁신</span> 우수사례 심사</h1>
+    <div class="mh-text"><h1>2026 AX <span style="white-space:nowrap">교육·행정혁신</span> 우수사례 육성 프로그램</h1>
     <p>결과보고서와 시제품(실행링크·시연 영상)을 함께 보고, 8개 평가요소마다 S부터 E까지 6단계 등급을 매깁니다.</p></div>
     <dl class="spec">
       <div><dt>심사 대상</dt><dd>12개 사례</dd></div>
