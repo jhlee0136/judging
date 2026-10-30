@@ -413,6 +413,8 @@ table.t tr.det>td,table.t tr.det:hover>td{background:#F8FAF9}
 .zl-areas i{width:10px;height:10px;border-radius:2px;display:inline-block}
 @media (max-width:860px){ .zlegend{grid-template-columns:1fr} .zl-col+.zl-col{border-left:0;border-top:1px solid var(--hair)} }
 @media print{ #pane>.zlegend{display:none!important} .zlegend{font-size:9.5px;break-inside:avoid;margin-bottom:8px} .zl-col{padding:6px 10px} .zl-col>b{font-size:11px;margin-bottom:4px} .zlegend li{margin:1px 0} }
+textarea.inp.guide-text{min-height:380px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;background:var(--paper)}
+.modal .card:has(.guide-text){max-width:600px}
 .printonly{display:none}
 .phead{margin-bottom:12px}
 .phead h1{font-size:18px;margin-bottom:6px}
@@ -538,6 +540,8 @@ const areaOf = i => AREAS.find(a => a.items.includes(i));
 const mixBar = () => `<div class="mixbar" role="img" aria-label="배점 구성: ${AREAS.map(a => a.name + ' ' + a.max + '점').join(', ')}">${AREAS.map(a =>
   `<div style="flex:${a.max};background:${a.c}"><span>${a.name}</span><b>${a.max}</b></div>`).join('')}</div>`;
 const CUT = 70;
+const PERIOD = '2026.11.17.(화) ~ 11.20.(금)';
+const SITE_URL = 'https://jhlee0136.github.io/ax-judging/';
 // 시상 규모: 관리자가 '시상 규모 설정'에서 정함(DB jd_state.awards). 값이 없으면 대상 1, 분야별 우수상 1·장려상 2
 const awCfg = () => { const a = D.awards || {};
   return { grand: a.grand ?? 1, f: fd => ({ best: a.fields?.[fd]?.best ?? 1, enc: a.fields?.[fd]?.enc ?? 2 }) }; };
@@ -846,7 +850,7 @@ function renderLanding(msg) {
     <div class="mh-text"><h1>2026 AX <span style="white-space:nowrap">교육·행정혁신</span> 우수사례 육성 프로그램</h1>
     <p>결과보고서와 시제품(실행링크·시연 영상)을 함께 보고, 8개 평가요소마다 S부터 E까지 6단계 등급을 매깁니다.</p></div>
     <dl class="spec">
-      <div><dt>심사기간</dt><dd>2026.11.17.(화) ~ 11.20.(금)</dd></div>
+      <div><dt>심사기간</dt><dd>${PERIOD}</dd></div>
       <div><dt>심사 대상</dt><dd>12개 사례</dd></div>
       <div><dt>심사위원</dt><dd>6명</dd></div>
       <div><dt>배점</dt><dd>4개 영역 8개 요소, 100점</dd></div>
@@ -1472,6 +1476,7 @@ function paneJudges() {
           <td class="n"><button class="btn sm js" data-j="${j.no}">저장</button>
             ${j.has_code ? `<button class="btn sm jv" data-j="${j.no}">코드 보기</button>` : ''}
             <button class="btn sm ${j.has_code ? '' : 'pri'} jc" data-j="${j.no}">${j.has_code ? '재발급' : '코드 발급'}</button>
+            ${j.has_code ? `<button class="btn sm jm" data-j="${j.no}">안내 문구</button>` : ''}
             ${sa ? `<button class="btn sm danger us" data-j="${j.no}">전송 취소</button>` : ''}</td></tr>`; }).join('')}
       </tbody></table></div>`;
   const showCode = async (j, code) => {
@@ -1500,7 +1505,51 @@ function paneJudges() {
       await adminDo('load'); renderAdmin(); showCode(j, r.code);
     } catch (e) { toast(e.message); }
   });
+  document.querySelectorAll('.jm').forEach(b => b.onclick = async () => {
+    const j = +b.dataset.j;
+    let code = null;
+    try { code = (await rpc('jd_view_code', { p_code:S.code, p_judge:j })).code; } catch (e) { return toast(e.message); }
+    const text = guideText(j, code);
+    const p = modal(`${jname(j)} 접속 안내`, `${code ? '' : '<p class="err" style="margin:0 0 8px">이 위원의 코드는 확인할 수 없어 접속코드 자리를 비워 두었습니다. 재발급한 뒤 다시 만들어 주세요.</p>'}
+      <textarea class="inp guide-text" id="gtx" readonly>${h(text)}</textarea>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><p class="tiny muted" style="margin:0;flex:1">문자·메신저·메일에 붙여넣어 보내세요. 접속코드가 들어 있으니 본인에게만 보내야 합니다.</p>
+        <button type="button" class="btn pri" id="gcp">복사</button></div>`,
+      [{ label:'닫기', value:null }]);
+    // 누르는 즉시 복사(브라우저가 사용자 동작 안에서만 클립보드 쓰기를 허용). 막히면 글을 선택해 복사
+    $('#gcp').onclick = async () => {
+      const ta = $('#gtx');
+      try { await navigator.clipboard.writeText(text); }
+      catch { ta.focus(); ta.select(); if (!document.execCommand('copy')) return toast('복사하지 못했습니다. 글을 직접 선택해 복사하세요.'); }
+      $('#gcp').textContent = '복사됨'; toast('안내 문구를 복사했습니다.');
+    };
+    await p;
+  });
   bindUnsend();
+}
+// 심사위원에게 보내는 접속 안내문
+function guideText(j, code) {
+  const full = jname(j), m = full.match(/^(.*?)\s*\((.+)\)$/);
+  const who = m ? `${m[1]} ${m[2]}님` : `${full} 위원님`;
+  const n = D.teams.length - D.recuse.filter(r => r.judge_no === j).length;
+  return `[2026 AX 교육·행정혁신 우수사례 육성 프로그램] 온라인 심사 안내
+
+${who}, 안녕하십니까.
+2026 AX 교육·행정혁신 우수사례 심사위원을 맡아 주셔서 감사합니다. 아래와 같이 온라인 심사를 안내드립니다.
+
+■ 심사기간: ${PERIOD}
+■ 접속 주소: ${SITE_URL}
+■ 로그인: 구분에서 '${full}' 선택 후 접속코드 입력
+■ 접속코드: ${code || '(재발급 후 입력)'}
+  ※ 위원님 전용 코드이므로 다른 분과 공유하지 마십시오.
+
+■ 심사 방법
+ 1. 평가팀 목록에서 사례를 눌러 결과보고서(PDF), 시제품 실행링크, 시연 영상을 확인합니다.
+ 2. 8개 평가요소마다 S~E 등급을 고른 뒤 '저장'합니다. 저장한 평가는 결과 전송 전까지 언제든 고칠 수 있습니다.
+ 3. ${n}개 사례를 모두 평가한 뒤 목록 화면의 '결과 전송'을 누르면 점수가 확정됩니다.
+ ※ 공정한 심사를 위해 참가자의 소속·성명은 표시되지 않습니다(블라인드 심사).
+ ※ 결과보고서를 보면서 평가하기 좋도록 PC 사용을 권장합니다.
+
+■ 문의: 사업통합관리팀(내선 2453)`;
 }
 
 function paneTeams() {
