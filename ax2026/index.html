@@ -843,7 +843,7 @@ function renderDemo() {
 function renderTop() {
   const who = S ? `<span class="who">${h(D?.judge?.name || '')}${isAdmin() ? '' : ' 위원님'}</span><button class="btn ghost sm" id="out">로그아웃</button>` : '';
   // 머리글: 전체 시스템(상위) › 이 심사
-  $('#top').innerHTML = `<a class="brand" href="../">전문대학 혁신지원사업 온라인 심사 시스템</a><span class="bsep" aria-hidden="true">›</span><span class="bprog" id="home" role="link" tabindex="0">2026 AX 우수사례 육성 프로그램</span><div class="sp"></div>${who}`;
+  $('#top').innerHTML = `<a class="brand" href="../">전문대학 혁신지원사업 온라인 심사 시스템</a><span class="bsep" aria-hidden="true">›</span><span class="bprog" id="home" role="link" tabindex="0">2026 AX 교육·행정혁신 우수사례 육성 프로그램</span><div class="sp"></div>${who}`;
   $('#home').onclick = () => go(S ? (isAdmin() ? '#/admin' : '#/home') : '#/');
   $('#home').onkeydown = e => { if (e.key === 'Enter') $('#home').click(); };
   if (S) $('#out').onclick = logout;
