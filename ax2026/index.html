@@ -548,7 +548,7 @@ const mixBar = () => `<div class="mixbar" role="img" aria-label="배점 구성: 
   `<div style="flex:${a.max};background:${a.c}"><span>${a.name}</span><b>${a.max}</b></div>`).join('')}</div>`;
 const CUT = 70;
 const PERIOD = '2026.11.17.(화) ~ 11.20.(금)';
-const SITE_URL = 'https://jhlee0136.github.io/ax-judging/ax2026/';
+const SITE_URL = 'https://jhlee0136.github.io/judging/ax2026/';
 // 시상 규모: 관리자가 '시상 규모 설정'에서 정함(DB jd_state.awards). 값이 없으면 대상 1, 분야별 우수상 1·장려상 2
 const awCfg = () => { const a = D.awards || {};
   return { grand: a.grand ?? 1, f: fd => ({ best: a.fields?.[fd]?.best ?? 1, enc: a.fields?.[fd]?.enc ?? 2 }) }; };
