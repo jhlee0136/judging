@@ -1,0 +1,1708 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>전문대학 혁신지원사업 온라인 심사 시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  /* 심사기준표: 종이 위 먹색 잉크, 괘선으로 나누고 인주색은 대상 표시에만 */
+  --paper:#F5F6F4; --sheet:#FFFFFF; --ink:#1E2B2A; --ink2:#3F5754; --sub:#5E6B69; --mute:#8D9896;
+  --rule:#CBD3D0; --hair:#E2E7E5; --wash:#EEF1F0;
+  --seal:#A63A2B; --ok:#2E6A4E; --okbg:#E6F0EA; --warn:#7D5A00; --warnbg:#F4EDD8; --bad:#A63A2B; --badbg:#F6E6E3;
+  --r:6px;
+  /* 화면 코드 곳곳에서 쓰는 이름 */
+  --navy:var(--ink); --navy2:var(--ink2); --accent:var(--seal); --line:var(--hair); --soft:var(--wash);
+  --bg:var(--paper); --card:var(--sheet); --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--ink2);text-underline-offset:3px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink2);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+.top{background:var(--sheet);color:var(--ink);border-bottom:1px solid var(--rule)}
+.top .wrap{display:flex;align-items:center;gap:12px;min-height:54px;flex-wrap:wrap}
+.top .brand{font-weight:700;cursor:pointer;font-size:15.5px}
+.top .brand small{font-weight:400;color:var(--sub);margin-left:8px;font-size:13.5px}
+.top .sp{flex:1}
+.top .who{font-size:14px;color:var(--sub)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--rule);background:var(--sheet);border-radius:4px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap;color:var(--ink);text-decoration:none}
+.btn:hover{background:var(--wash)}
+.btn.pri{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.pri:hover{background:var(--ink2);border-color:var(--ink2)}
+.btn.acc{background:var(--seal);border-color:var(--seal);color:#fff}
+.btn.ghost{background:var(--sheet);border-color:var(--rule);color:var(--ink)}
+.btn.ghost:hover{background:var(--wash)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn.danger{color:var(--seal)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r)}
+.pad{padding:20px 22px}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.01em}
+.muted{color:var(--sub)}
+.tiny{font-size:12.5px}
+.badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:12.5px;font-weight:600;white-space:nowrap;line-height:1.6}
+.b-ok{background:var(--okbg);color:var(--ok)} .b-warn{background:var(--warnbg);color:var(--warn)}
+.b-none{background:var(--wash);color:var(--mute)} .b-bad{background:var(--badbg);color:var(--bad)}
+.b-navy{background:var(--wash);color:var(--ink2)}
+.demo{background:var(--warnbg);border-bottom:1px solid #E3D6AE;color:var(--warn);font-size:13.5px}
+.demo .wrap{padding-top:7px;padding-bottom:7px}
+
+/* 첫 화면: 심사기준표가 주인공 */
+.masthead{background:var(--sheet);border-bottom:1px solid var(--rule)}
+.masthead .wrap{padding-top:34px;padding-bottom:26px}
+.masthead h1{font-size:clamp(23px,3.2vw,30px);line-height:1.35;max-width:22em}
+.masthead p{margin:8px 0 0;color:var(--sub);max-width:46em}
+.spec{display:flex;flex-wrap:wrap;margin:20px 0 0;border:1px solid var(--rule);border-radius:4px;width:fit-content;max-width:100%}
+.spec>div{padding:8px 16px;border-right:1px solid var(--hair)}
+.spec>div:last-child{border-right:0}
+.spec dt{font-size:12.5px;color:var(--sub)}
+.spec dd{margin:0;font-weight:600}
+.land{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;padding-top:24px;padding-bottom:48px;align-items:start}
+.land>div,.land>aside{min-width:0}
+.land aside{position:sticky;top:16px}
+.sheetform{padding:20px 22px 16px;margin-bottom:20px}
+.sheetform h2{font-size:18px;margin-bottom:12px}
+.areas{width:100%;border-collapse:collapse;font-size:14px;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+.areas th,.areas td{padding:8px 8px;border-bottom:1px solid var(--hair);border-right:1px solid var(--hair);text-align:center;vertical-align:middle}
+.areas tr>:last-child{border-right:0}
+.areas thead th{color:var(--ink2);font-weight:600;font-size:13px;background:var(--wash);border-bottom:1px solid var(--rule)}
+.areas td.l{text-align:left}
+.areas td.n,.areas th.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.areas td.sa{font-weight:600;background:#FAFBFA;width:120px}
+.areas td.sa small{display:block;font-weight:400;color:var(--sub)}
+.areas td.pt{font-variant-numeric:tabular-nums;color:var(--sub);width:46px}
+.areas td.pt.top1{color:var(--ink);font-weight:600}
+.grade-key{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:12px;border:1px solid var(--hair);border-radius:4px;font-size:13px}
+.grade-key>div{padding:8px 12px;border-right:1px solid var(--hair)}
+.grade-key>div:last-child{border-right:0}
+.grade-key b{display:block}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{position:relative;padding:12px 0 12px 30px;border-top:1px solid var(--hair);overflow-wrap:anywhere}
+.steps li:first-child{border-top:0;padding-top:4px}
+.steps li:before{counter-increment:s;content:counter(s);position:absolute;left:0;top:12px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums}
+.steps li:first-child:before{top:4px}
+.steps li>b:first-child{display:block;margin-bottom:2px}
+.steps .fx{margin:8px 0 4px;padding:8px 12px;border-left:3px solid var(--ink);background:var(--wash);font-weight:600;font-size:14px}
+.login h2{font-size:18px;margin-bottom:4px}
+.field{display:block;margin-top:14px}
+.field span{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:6px}
+.inp{width:100%;border:1px solid var(--rule);border-radius:4px;padding:9px 11px;background:var(--sheet)}
+.inp:focus{outline:2px solid var(--ink2);outline-offset:0;border-color:var(--ink2)}
+.err{color:var(--seal);font-size:13.5px;margin-top:10px;min-height:20px}
+
+/* 심사위원: 평가팀 목록 */
+.pagehead{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:28px 0 16px}
+.pagehead h1{font-size:23px}
+.prog{flex:1;min-width:220px;max-width:340px;margin-left:auto}
+.bar{height:6px;background:var(--hair);border-radius:3px;overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--ink)}
+.note{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:12px 16px;font-size:14px;margin-bottom:18px}
+.note ul{margin:6px 0 0;padding-left:18px}
+.grp{margin:26px 0 8px;font-size:15px;font-weight:700;display:flex;gap:8px;align-items:baseline}
+.grp .badge{background:none;color:var(--sub);padding:0;font-weight:400}
+.teams{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.team{display:grid;grid-template-columns:44px minmax(0,1fr) auto 64px;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--hair);cursor:pointer}
+.team:first-child{border-top:0}
+.team:hover{background:var(--wash)}
+.team .no{font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums;font-size:15px}
+.team .tx{min-width:0}
+.team .th{font-size:12.5px;color:var(--sub)}
+.team .t{font-weight:600;font-size:15px;line-height:1.45}
+.team .score{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.sendbox{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:6px;border-color:var(--ink)}
+.sendbox>div{flex:1;min-width:240px}
+.sendbox.sent{background:var(--okbg);border-color:#BCD5C6}
+
+/* 평가표 */
+.crumb{margin:18px 0 0;font-size:14px}
+.tinfo{margin:12px 0 16px;padding:18px 22px}
+.tinfo h1{font-size:21px;line-height:1.4;margin:6px 0 2px}
+.links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.links a,.links span{font-size:13.5px;padding:6px 12px;border-radius:4px;border:1px solid var(--rule);text-decoration:none;background:var(--sheet);color:var(--ink)}
+.links a:hover{background:var(--wash)}
+.links span{color:var(--mute)}
+.viewer{margin:16px 0 0;overflow:hidden}
+.tpage.split{max-width:none}
+.tpage.split .tlayout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(460px,1fr);gap:20px;align-items:start}
+.tpage.split .viewer{position:sticky;top:12px;margin-top:18px;height:calc(100vh - 100px);display:flex;flex-direction:column}
+.tpage.split .vbody{flex:1;min-height:0}
+.tpage.split .vbody iframe{height:100%}
+.tpage.split .vnote{display:none}
+.tpage.split .legend{grid-template-columns:1fr}
+.vbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 14px;border-bottom:1px solid var(--rule)}
+.vbar .sp{flex:1}
+.vbody iframe{display:block;width:100%;height:80vh;border:0;background:#525659}
+.legend{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:16px;background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r)}
+.legend div{padding:10px 14px;font-size:13px;border-right:1px solid var(--hair)}
+.legend div:last-child{border-right:0}
+.legend b{display:block;font-size:13.5px}
+.area{margin:26px 0 8px;display:flex;align-items:baseline;gap:10px;padding-bottom:6px;border-bottom:2px solid var(--ink)}
+.area h2{font-size:17px}
+.item{padding:16px 20px;margin-bottom:10px}
+.item.miss{border-color:var(--seal);box-shadow:0 0 0 2px var(--badbg)}
+.ihead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.ihead h3{font-size:16px}
+.ihead .pts{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+.iq{margin:8px 0 4px}
+.src{font-size:13px;color:var(--sub)}
+details.guide{margin:10px 0 2px;border:1px solid var(--hair);border-radius:4px;padding:8px 12px;font-size:14px}
+details.guide summary{cursor:pointer;font-weight:600;color:var(--ink2)}
+details.guide ul{margin:8px 0 2px;padding-left:18px}
+details.guide li{margin-bottom:6px}
+/* 등급: 기준표의 체크칸처럼 한 줄로 이어진 칸 */
+.grades{display:grid;grid-template-columns:repeat(6,1fr);gap:0;margin-top:12px;border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+.g{border:0;border-right:1px solid var(--hair);background:var(--sheet);border-radius:0;padding:8px 4px;cursor:pointer;text-align:center;line-height:1.25}
+.g:last-child{border-right:0}
+.g b{display:block;font-size:16px}
+.g small{color:var(--sub);font-variant-numeric:tabular-nums}
+.g:hover{background:var(--wash)}
+.g.on{background:var(--ink);color:#fff}
+.g.on small{color:#C7D3D0}
+.g:disabled{cursor:default}
+.g:disabled:hover{background:var(--sheet)}
+.g.on:disabled:hover{background:var(--ink)}
+textarea.inp{min-height:96px;resize:vertical}
+.sticky{position:sticky;bottom:0;background:var(--sheet);border-top:1px solid var(--rule);margin-top:20px;z-index:5}
+.sticky .wrap{display:flex;align-items:center;gap:14px;padding-top:10px;padding-bottom:10px;flex-wrap:wrap}
+.subs{display:flex;gap:16px;font-size:13px;color:var(--sub);flex-wrap:wrap}
+.subs b{color:var(--ink);font-variant-numeric:tabular-nums}
+.total{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin-left:auto}
+.total small{font-size:14px;color:var(--sub);font-weight:400}
+.pager{display:flex;justify-content:space-between;gap:8px;margin:18px 0 6px}
+
+/* 관리자 */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule);margin:22px 0 18px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 14px;border:0;background:none;cursor:pointer;font-weight:600;color:var(--sub);border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);border-color:var(--ink)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--r);background:var(--sheet)}
+table.t{width:100%;border-collapse:collapse;font-size:14px}
+table.t th,table.t td{padding:9px 10px;border-bottom:1px solid var(--hair);border-right:1px solid var(--hair);text-align:center;vertical-align:middle}
+table.t tr>:last-child{border-right:0}
+table.t th{background:var(--wash);color:var(--ink2);font-size:12.5px;font-weight:600;white-space:nowrap;border-bottom-color:var(--rule)}
+table.t td.n,table.t th.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+table.t td.l,table.t th.l{text-align:left}
+table.t td.c,table.t th.c{text-align:center}
+table.t tr.det>td{text-align:left;background:#FAFBFA;padding:12px 14px}
+table.t tr.out td{color:var(--mute)}
+.rank{font-weight:700;font-variant-numeric:tabular-nums}
+.rank.r1,.rank.r2,.rank.r3{color:var(--ink)}
+/* 상 표시: 도장처럼 테두리만. 대상만 인주색 */
+.aw0,.aw1,.aw2{background:none;border:1.5px solid currentColor;padding:0 6px}
+.aw0{color:var(--seal)} .aw1{color:var(--ink)} .aw2{color:var(--ok)}
+.cmt-team{margin-bottom:12px}
+.cmt-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}.cmt-head h3{font-size:16px}.cmt-head .sp{flex:1}
+.cmt{border-top:1px solid var(--hair);padding:12px 0 10px}.cmt-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.cmt-body{white-space:pre-wrap;line-height:1.7}
+.awards .aw-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}.awards h3{font-size:17px}
+s.drop{color:var(--mute)}
+.mx td.cell{text-align:center;cursor:pointer;font-variant-numeric:tabular-nums}
+.mx td.tm{white-space:nowrap;max-width:250px;overflow:hidden;text-overflow:ellipsis}
+.mx td.cell{padding:4px 4px}
+.mx td.cell .tiny{font-size:11.5px;white-space:nowrap}
+.mx td.cell:hover{background:var(--wash)}
+.cell .badge{min-width:40px}
+/* 요약 수치: 카드 여러 장 대신 한 줄 표 */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-bottom:16px;background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r)}
+.kpis .kpi{border:0;border-right:1px solid var(--hair);border-radius:0;padding:12px 16px}
+.kpis .kpi:last-child{border-right:0}
+.kpi b{display:block;font-size:19px;font-variant-numeric:tabular-nums}
+.formula{font-size:14px}
+.formula code{background:var(--wash);padding:1px 6px;border-radius:3px;font-size:13px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar .sp{flex:1}
+
+/* 창·알림 */
+.modal{position:fixed;inset:0;background:rgba(20,30,28,.42);display:grid;place-items:center;z-index:50;padding:16px}
+.modal .card{max-width:460px;width:100%;padding:22px;border-color:var(--ink);box-shadow:0 18px 50px rgba(20,30,28,.22)}
+.modal h3{font-size:18px;margin-bottom:8px}
+.modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.code{font-size:28px;font-weight:700;letter-spacing:.1em;text-align:center;padding:14px;border:1px dashed var(--rule);border-radius:4px;margin:12px 0;font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:4px;font-size:14px;z-index:60;max-width:calc(100vw - 32px)}
+.spin{padding:60px 0;text-align:center;color:var(--sub)}
+
+@media (max-width:900px){
+  .land{grid-template-columns:1fr}
+  .land aside{position:static;order:-1}
+}
+@media (max-width:860px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .kpis .kpi:nth-child(2){border-right:0}
+  .kpis .kpi:nth-child(-n+2){border-bottom:1px solid var(--hair)}
+  .legend,.grade-key{grid-template-columns:1fr}
+  .legend div,.grade-key>div{border-right:0;border-bottom:1px solid var(--hair)}
+  .legend div:last-child,.grade-key>div:last-child{border-bottom:0}
+  .grades{grid-template-columns:repeat(3,1fr)}
+  .g:nth-child(3){border-right:0}
+  .g:nth-child(-n+3){border-bottom:1px solid var(--hair)}
+  .total{margin-left:0}
+}
+@media (max-width:560px){
+  .team{grid-template-columns:30px minmax(0,1fr) auto;gap:10px;padding:12px}
+  .team .score{display:none}
+  .areas{font-size:13px}
+  .areas td.pt{width:auto;padding:6px 3px}
+  .areas th,.areas td{padding:6px 5px}
+  .spec>div{padding:6px 12px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* 촘촘한 표(평가자료 등록): 한 행을 한 줄로 */
+.btn.xs{padding:2px 8px;font-size:12.5px;border-radius:3px;line-height:1.6}
+table.t.compact{font-size:13px}
+table.t.compact th,table.t.compact td{padding:5px 8px}
+table.t.compact td.nowrap{white-space:nowrap;max-width:330px;overflow:hidden;text-overflow:ellipsis}
+table.t.compact .inp{padding:3px 8px;font-size:13px;min-width:130px}
+.fline{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.fline .fst{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-size:12.5px}
+/* ===== 마감: 같은 색 조합 위에 글꼴 대비·여백·괘선 굵기로 품격을 더함 ===== */
+:root{ --pine:#2C5A50; --frost:#E4ECE9; --display:"Hahmlet","IBM Plex Sans KR",serif; }
+a{color:var(--pine)}
+:focus-visible{outline-color:var(--pine)}
+h1,h2,.awards h3,.cmt-head h3,.modal h3,.total,.kpi b,.code,.team .no{font-family:var(--display);letter-spacing:-.015em}
+h1,h2{font-weight:600}
+.top .brand{font-family:var(--display);font-weight:600;font-size:16.5px;letter-spacing:-.01em}
+
+/* 첫 화면 머리말: 넓은 여백, 큰 제목, 보고서 표지 같은 두 줄 괘선 */
+.masthead{border-bottom:0;position:relative}
+.masthead:after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;border-top:2px solid var(--ink);border-bottom:1px solid var(--ink)}
+.masthead .wrap{padding-top:30px;padding-bottom:26px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px 32px;flex-wrap:wrap}
+.mh-text{min-width:0;flex:1 1 520px}
+.masthead h1{font-size:clamp(23px,2.6vw,31px);line-height:1.3;font-weight:600;word-break:keep-all;text-wrap:balance}
+.masthead p{margin-top:6px;font-size:14.5px;line-height:1.6}
+.spec{margin-top:0;border-color:var(--rule);flex:0 0 auto}
+.spec>div{padding:8px 16px}
+.spec dd{font-family:var(--display);font-weight:600;font-size:15px}
+.land{padding-top:28px;gap:28px}
+.sheetform{padding:26px 28px 20px}
+.sheetform h2,.land .card.pad>h2{font-size:21px!important;margin-bottom:16px!important}
+.land .card.pad{padding:26px 28px}
+.login h2{font-size:21px}
+.areas thead th{background:var(--frost)}
+.areas td.sa{background:#F8FAF9}
+.grade-key{border-color:var(--rule)}
+.steps li:before{color:var(--pine);font-family:var(--display);font-size:17px;top:9px}
+.steps li:first-child:before{top:1px}
+.steps .fx{border-left-color:var(--pine);background:var(--frost)}
+
+/* 공통 판: 여백을 넉넉히, 모서리를 조금 더 부드럽게 */
+.card{border-radius:8px}
+.pad{padding:24px 26px}
+.btn{padding:9px 16px;letter-spacing:.01em}
+.btn.sm{padding:6px 12px}
+.btn.pri{background:var(--ink)}
+.btn.pri:hover{background:var(--pine);border-color:var(--pine)}
+.inp{padding:10px 12px}
+
+/* 페이지 머리 */
+.pagehead{margin:40px 0 22px}
+.pagehead h1{font-size:30px}
+.bar{height:4px}
+.bar i{background:var(--pine)}
+
+/* 표: 회색 채움 대신 서리색 머리글과 먹색 밑줄 */
+.tbl-wrap{border-radius:8px}
+table.t th{background:var(--frost);color:var(--ink);font-weight:600;border-bottom:1.5px solid var(--ink)}
+table.t td{border-bottom-color:#E8ECEA}
+table.t tbody tr:hover td{background:#FAFBFA}
+table.t tr.det>td,table.t tr.det:hover>td{background:#F8FAF9}
+
+/* 탭 */
+.tabs{gap:6px}
+.tab{font-size:15px;padding:12px 4px;margin-right:14px}
+.tab.on{border-bottom-width:2px}
+
+/* 요약 수치 */
+.kpis{border-radius:8px}
+.kpis .kpi{padding:16px 20px}
+.kpi b{font-size:26px;font-weight:600;line-height:1.2}
+
+/* 시상 결과 */
+.awards h3{font-size:21px}
+.awards{padding:26px 28px}
+
+/* 평가팀 목록 */
+.grp{font-family:var(--display);font-size:18px;font-weight:600;margin:34px 0 10px}
+.grp .badge{font-family:"IBM Plex Sans KR",sans-serif;font-size:13px}
+.teams{border-radius:8px}
+.team{padding:15px 20px}
+.team .no{font-size:20px;font-weight:600;color:var(--pine)}
+.team .t{font-size:15.5px}
+.sendbox{padding:20px 24px}
+
+/* 평가표 */
+.tinfo{padding:22px 26px}
+.tinfo h1{font-size:25px;line-height:1.35}
+.area{margin:34px 0 10px}
+.area h2{font-size:21px}
+.item{padding:20px 24px}
+.ihead h3{font-size:16.5px}
+.ihead .pts{font-family:var(--display);font-size:18px;font-weight:600}
+.grades{border-radius:6px}
+.g{padding:10px 4px}
+.g b{font-family:var(--display);font-size:18px;font-weight:600}
+.g.on{background:var(--pine)}
+.g.on:disabled:hover{background:var(--pine)}
+.sticky .wrap{padding-top:12px;padding-bottom:12px}
+.total{font-size:30px;font-weight:600}
+.legend{border-radius:8px}
+.legend b{font-family:var(--display);font-weight:600;font-size:14.5px}
+
+/* 창 */
+.modal .card{border-radius:10px;padding:26px}
+.modal h3{font-size:21px;font-weight:600}
+.code{font-size:32px;font-weight:600}
+
+@media (max-width:560px){
+  .masthead .wrap{padding-top:22px;padding-bottom:20px}
+  .spec>div{padding:8px 14px}
+  .sheetform,.land .card.pad{padding:20px 18px}
+  .pagehead h1{font-size:25px}
+  .team{padding:12px 14px}
+}
+
+/* 심사항목 4색: 배점 구성 띠, 평가표 영역, 점수 막대, 결과 막대 */
+.mixbar{display:flex;gap:2px;margin:0 0 14px;border-radius:4px;overflow:hidden;height:34px}
+.mixbar>div{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 10px;color:#fff;font-size:12.5px;min-width:0}
+.mixbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mixbar b{font-family:var(--display);font-size:15px;font-weight:600}
+.area{border-bottom-width:2px}
+.adot{width:10px;height:10px;border-radius:2px;flex:0 0 auto;align-self:center}
+.subs{flex-direction:column;gap:6px;flex:1 1 420px;max-width:560px}
+.scorebar{display:flex;gap:3px;height:10px}
+.sb-seg{background:var(--hair);border-radius:2px;overflow:hidden}
+.sb-seg i{display:block;height:100%;transition:width .25s ease}
+.sb-leg{display:flex;gap:14px;flex-wrap:wrap}
+.sb-leg span{display:inline-flex;align-items:center;gap:5px}
+.sb-leg i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.abar{display:flex;height:6px;margin-top:6px;width:200px;max-width:100%;background:var(--hair);border-radius:2px;overflow:hidden}
+.abar i{display:block;height:100%}
+.zplot{display:block;margin:0 auto}
+/* 심사위원 목록: 12칸 진행 줄 */
+.prog{max-width:420px}
+.ticks{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-top:6px}
+.tk{display:block;text-align:center;font-size:11.5px;line-height:24px;border-radius:3px;text-decoration:none;font-variant-numeric:tabular-nums;border:1px solid var(--rule);color:var(--sub);background:var(--sheet)}
+.tk:hover{border-color:var(--ink)}
+.tk-draft{background:var(--warnbg);border-color:#E3D6AE;color:var(--warn)}
+.tk-full{background:var(--pine);border-color:var(--pine);color:#fff}
+.tk-sent{background:var(--ink);border-color:var(--ink);color:#fff}
+.tk-leg{display:flex;gap:12px;margin-top:6px}
+.tk-leg span{display:inline-flex;align-items:center;gap:4px}
+.tk-leg i{width:10px;height:10px;border-radius:2px;border:1px solid var(--rule);display:inline-block}
+.tk-leg i.tk-full{background:var(--pine);border-color:var(--pine)} .tk-leg i.tk-draft{background:var(--warnbg)} .tk-leg i.tk-none{background:var(--sheet)}
+@media (max-width:560px){ .mixbar span{display:none} .mixbar>div{justify-content:center} .abar{width:140px} }
+@media print{ .sb-seg i{transition:none} .abar{width:160px} }
+.zlegend{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);gap:0;margin:0 0 14px;background:var(--sheet);border:1px solid var(--rule);border-radius:8px;font-size:13px}
+.zl-col{padding:14px 18px}
+.zl-col+.zl-col{border-left:1px solid var(--hair)}
+.zl-col>b{display:block;font-family:var(--display);font-size:15px;font-weight:600;margin-bottom:8px}
+.zl-keys{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:8px}
+.zl-keys span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.zlegend ul{margin:0;padding-left:18px;color:var(--sub)}
+.zlegend li{margin:3px 0}
+.zlegend li b{color:var(--ink)}
+.zl-area p{margin:0 0 8px;color:var(--sub)}
+.zl-areas{display:flex;flex-wrap:wrap;gap:6px 14px}
+.zl-areas span{display:inline-flex;align-items:center;gap:5px}
+.zl-areas i{width:10px;height:10px;border-radius:2px;display:inline-block}
+@media (max-width:860px){ .zlegend{grid-template-columns:1fr} .zl-col+.zl-col{border-left:0;border-top:1px solid var(--hair)} }
+@media print{ #pane>.zlegend{display:none!important} .zlegend{font-size:9.5px;break-inside:avoid;margin-bottom:8px} .zl-col{padding:6px 10px} .zl-col>b{font-size:11px;margin-bottom:4px} .zlegend li{margin:1px 0} }
+textarea.inp.guide-text{min-height:380px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;background:var(--paper)}
+.modal .card:has(.guide-text){max-width:600px}
+/* 상위 시스템 › 이 심사 머리글 */
+.top a.brand{color:var(--ink);text-decoration:none}
+.top a.brand:hover{color:var(--pine)}
+.top .bsep{color:var(--mute)}
+.top .bprog{font-size:14.5px;color:var(--ink2);cursor:pointer;font-weight:600}
+.top .bprog:hover{color:var(--pine)}
+@media (max-width:700px){ .top .bsep,.top .bprog{display:none} }
+.printonly{display:none}
+.phead{margin-bottom:12px}
+.phead h1{font-size:18px;margin-bottom:6px}
+.phead div{font-size:11.5px;color:#333;margin-top:2px}
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .top,.tabs,.toolbar,.btn,.demo,.noprint,.pagehead,.kpis,.toast{display:none!important}
+  .printonly{display:block!important}
+  html,body{background:#fff;font-size:11px}
+  .wrap{max-width:none;padding:0}
+  .tbl-wrap,.card{box-shadow:none;border-color:#bbb}
+  .tbl-wrap{overflow:visible}
+  table.t{font-size:10.5px}
+  table.t th,table.t td{padding:5px 6px}
+  table.t tr{break-inside:avoid}
+  .awards,.formula,.cmt{break-inside:avoid}
+  table.t tr.out td{color:#666}
+  .rank{width:22px;height:22px}
+  /* 기본 인쇄: 1쪽 시상 결과, 2쪽 전체 순위, 3쪽 산정 방법 */
+  #pane .awards{break-after:page;page-break-after:always}
+  #pane .formula{break-before:page;page-break-before:always;margin-top:0!important}
+  #pane .rank-tbl{break-inside:avoid}
+  #pane .rank-tbl table.t{font-size:9.5px}
+  #pane .rank-tbl table.t th,#pane .rank-tbl table.t td{padding:3px 5px}
+  #pane .rank-tbl .tiny{font-size:8.5px}
+  #pane .rank-tbl .abar{height:4px;margin-top:2px}
+  #pane .rank-tbl .zplot{width:110px;height:16px}
+  #pane .rank-tbl .badge{font-size:9px;padding:0 4px}
+  .ptitle{break-after:avoid}
+  .ptitle{font-size:16px;margin:0 0 10px}
+  #pane .formula{font-size:10.5px;line-height:1.5;padding:12px 16px}
+  #pane .formula .steps li{padding:5px 0 5px 22px}
+  #pane .formula .steps li:before{top:5px}
+  #pane .formula .steps li:first-child:before{top:0}
+  #pane .formula .steps li:first-child{padding-top:0}
+  #pane .formula .fx{margin:4px 0 2px;padding:4px 10px;font-size:10.5px}
+  #pane .formula .tiny{font-size:9.5px}
+  /* 위원별 상세 포함: 화면 대신 사례별 쪽 문서만 인쇄 */
+  body.print-det #app,body.print-det #demo,body.print-det .top{display:none!important}
+  body.print-det #printdoc{display:block!important}
+  .ppage{break-after:page;page-break-after:always}
+  .ppage:last-child{break-after:auto;page-break-after:auto}
+  .ppage table,.ppage .awards{break-inside:avoid}
+  .pcase-top{font-size:10px;color:#666;margin-bottom:6px}
+  .pcase-title{font-size:16px;margin:0 0 10px}
+  .pcase-sum{margin-bottom:12px}
+  .pcase-det table.t{font-size:10.5px}
+}
+#printdoc{display:none}
+</style>
+</head>
+<body>
+<div id="demo"></div>
+<header class="top"><div class="wrap" id="top"></div></header>
+<main id="app"></main>
+
+<script>
+/* ===== 설정: 심사용 Supabase 프로젝트 (비워 두면 이 브라우저 안에서만 동작하는 시연 모드) ===== */
+const CFG = { url: 'https://qxocbfjymyehpviehile.supabase.co', key: 'sb_publishable_yvE2inhK4V2jh7l3tKjVgw_kwsAYZXW' };
+
+/* ===== 심사기준 ===== */
+const GR = ['S','A','B','C','D','E'], RT = [1, .8, .6, .4, .2, 0];
+const AREAS = [
+  { name:'창의·혁신성', max:30, items:[0,1], c:'#3A6B5E' },   // 침엽수 녹색
+  { name:'효과성', max:30, items:[2,3], c:'#3E6585' },       // 피오르 청회색
+  { name:'확산성', max:20, items:[4,5], c:'#B08A3E' },       // 자작나무 황토
+  { name:'완성도', max:20, items:[6,7], c:'#8C5876' },       // 헤더 자주
+];
+const CRIT = [
+  { name:'독창성 및 차별성', max:15,
+    q:'기존 교육·행정 방식 및 타 사례와 비교하여, AI를 적용한 접근 방식과 기획 아이디어가 독창적이고 차별화되는가?',
+    src:'결과보고서 2. 추진 배경, 4. 추진 내용',
+    pts:[['접근 방식의 신선함','기존 시스템에 챗봇 탭을 추가하는 수준을 넘어, 업무·교육 프로세스 자체를 재정의(AX)하려는 시도가 돋보이는가?'],
+         ['기존 방식과의 격차','수작업 또는 전통적 IT 방식 대비 AI 도입으로 얻는 기획적 차별점이 명확한가?'],
+         ['타 대학·공공 사례 비교','널리 상용화된 흔한 활용 사례를 단순 복제한 수준이 아니라, 기관 특성에 맞게 독창적으로 기획되었는가?']] },
+  { name:'AI 활용의 정교성', max:15,
+    q:'목적에 적합한 AI 도구를 선정하고, 프롬프트·데이터·시스템 연동 등 기술적 응용 및 조합 구조가 정교한가?',
+    src:'결과보고서 4-1) 활용 AI 도구, 4-2) 추진 과정',
+    pts:[['AI 모델·도구 선정의 타당성','문제 특성에 맞는 AI 엔진(LLM, STT/TTS, Vision, RAG 등)을 적재적소에 선택했는가?'],
+         ['파이프라인 정교함','단일 질의응답을 넘어 프롬프트 엔지니어링, API 연동, DB·지식베이스(RAG) 조합 등 연동 구조가 정교하게 설계되었는가?'],
+         ['기술적 예외 처리','환각 방지, 답변 정밀도 향상, 보안 요소 등을 고려한 기술적 장치가 반영되었는가?']] },
+  { name:'문제 해결 및 목적 달성도', max:20,
+    q:'기획 단계에서 도출한 교육·행정 현장의 문제점 및 추진 목적을 개발 결과물이 실질적으로 해결하고 달성하였는가?',
+    src:'결과보고서 3. 추진 목적, 5. 주요 성과, 시제품 시연 영상·링크',
+    pts:[['Problem-Solution Fit','기획 서두에서 제기한 현장의 핵심 페인 포인트를 실제 개발물로 해결했는가?'],
+         ['목적 달성 수준','당초 설정한 핵심 기능과 목적 달성 범위가 빠짐없이 상응하는가?'],
+         ['실효성','서류상 이론에 그치지 않고 현장 적용 시 체감 만족도나 업무 개선 효과를 내는 구조인가?']],
+    strict:'최고 배점 문항입니다. 결과보고서의 기획 내용과 시제품 작동 모습이 부합하는지 엄격히 점검하세요.' },
+  { name:'정량·정성적 기대성과', max:10,
+    q:'제시된 성과(업무 효율, 예산/시간 절감 등)의 산출 근거가 객관적이고 구체적이며, 기대되는 파급 성과가 명확한가?',
+    src:'결과보고서 5. 주요 성과',
+    pts:[['산출 근거의 객관성','"효율 80% 향상" 같은 주장에 작업 시간 비교, 테스트 수치, 추정 산식 등 정량 근거를 제시했는가?'],
+         ['정성적 성과 구체성','사용자 편의성, 서비스 접근성, 업무 오류율 감소 등 정성적 성과가 구체적으로 기술되었는가?'],
+         ['지속적 성과 창출','시범 운용을 넘어 정식 운영 시 기대되는 성과의 파급력이 유의미한가?']] },
+  { name:'범용성 및 교내외 파급효과', max:10,
+    q:'본 개발 사례가 타 대학에서도 용이하게 도입·재활용할 수 있도록 범용적으로 설계되었는가?',
+    src:'결과보고서 6. 우수사례 확산 방안',
+    pts:[['표준화 및 모듈화','특정 부서·개인 환경에 종속되지 않고 다른 부서나 타 대학의 표준 프로세스에 바로 이식 가능한 구조인가?'],
+         ['재활용 용이성','대규모 추가 개발이나 시스템 전면 개편 없이 최소한의 설정 변경만으로 도입 가능한가?'],
+         ['공유 가치','타 대학·공공 영역에 벤치마킹 우수사례로 파급할 가치가 충분한가?']] },
+  { name:'지속 운영 및 확산 전략', max:10,
+    q:'사업 종료 후 지속적인 서비스 유지·관리 체계 및 교내외 성과 공유·확산을 위한 후속 실행 계획이 구체적인가?',
+    src:'결과보고서 6. 우수사례 확산 방안',
+    pts:[['지속가능성','종료 후 유지보수, 운영 주체(담당 부서), AI API 비용과 시스템 관리 방안이 현실적인가?'],
+         ['확산 실행 로드맵','사용자 매뉴얼, 교직원·학생 교육·워크숍, 성과 공유회, 코드 공유 등 단계별 확산 로드맵이 구체적인가?']] },
+  { name:'시제품·기능 구현 수준', max:15,
+    q:'결과보고서에 제시된 핵심 기능이 빠짐없이 구현되어 있으며, 기술적으로 안정적이고 정확하게 작동하는가?',
+    src:'시제품 실행링크, 시연 영상, 결과보고서 4-3) 구축 화면 및 주요 기능',
+    pts:[['기능 구현 완성도','결과보고서에 약속된 핵심 기능이 실행링크·영상에서 빠짐없이 작동하는가?'],
+         ['기술적 구동 안정성','접속 오류, 버그, 무한 로딩, 튕김 없이 안정적이고 빠르게 작동하는가?'],
+         ['결과 산출 정확도','AI 입력값에 따라 신뢰할 수 있는 출력 결과물을 정상적으로 생성하는가?']],
+    strict:'실행링크 접속에 문제가 있으면 즉시 감점하지 말고, 첨부된 시연 영상으로 기능 실체를 먼저 확인하세요.' },
+  { name:'사용자 편의성 및 UI/UX', max:5,
+    q:'교직원·학생 등 이용 대상자의 관점에서 화면 레이아웃 및 이용 흐름이 직관적이고 간결하여 쉽게 사용할 수 있는가?',
+    src:'시제품 실행링크, 시연 영상',
+    pts:[['화면 디자인 직관성','메뉴와 기능 배치가 사용자 관점에서 한눈에 파악하기 쉽게 정리되어 있는가?'],
+         ['사용 편의성(UX)','긴 설명서 없이도 누구나 자연스럽게 입력하고 결과를 확인할 수 있는가?']] },
+];
+const MAX = CRIT.map(c => c.max);
+const areaOf = i => AREAS.find(a => a.items.includes(i));
+// 100점 배점 구성 띠(영역별 색, 너비 = 배점)
+const mixBar = () => `<div class="mixbar" role="img" aria-label="배점 구성: ${AREAS.map(a => a.name + ' ' + a.max + '점').join(', ')}">${AREAS.map(a =>
+  `<div style="flex:${a.max};background:${a.c}"><span>${a.name}</span><b>${a.max}</b></div>`).join('')}</div>`;
+const CUT = 70;
+const PERIOD = '2026.11.17.(화) ~ 11.20.(금)';
+const SITE_URL = 'https://jhlee0136.github.io/ax-judging/ax2026/';
+// 시상 규모: 관리자가 '시상 규모 설정'에서 정함(DB jd_state.awards). 값이 없으면 대상 1, 분야별 우수상 1·장려상 2
+const awCfg = () => { const a = D.awards || {};
+  return { grand: a.grand ?? 1, f: fd => ({ best: a.fields?.[fd]?.best ?? 1, enc: a.fields?.[fd]?.enc ?? 2 }) }; };
+const AW_NAMES = ['우수상', '장려상'];
+const awN = (c, name) => name === '우수상' ? c.best : c.enc;
+
+/* ===== 공통 ===== */
+const $ = s => document.querySelector(s);
+const h = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sum = a => a.reduce((x, y) => x + (y || 0), 0);
+const mean = a => a.length ? sum(a) / a.length : null;
+const f = (v, d = 2) => v == null ? '–' : v.toFixed(d);
+const store = {
+  get(k, s = sessionStorage) { try { return JSON.parse(s.getItem(k)); } catch { return null; } },
+  set(k, v, s = sessionStorage) { try { v == null ? s.removeItem(k) : s.setItem(k, JSON.stringify(v)); } catch {} },
+};
+function toast(msg) {
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
+  document.body.appendChild(d); setTimeout(() => d.remove(), 2600);
+}
+function modal(title, body, acts) {
+  return new Promise(res => {
+    const m = document.createElement('div'); m.className = 'modal';
+    m.innerHTML = `<div class="card" role="dialog" aria-modal="true"><h3>${h(title)}</h3><div>${body}</div><div class="acts"></div></div>`;
+    const box = m.querySelector('.acts');
+    acts.forEach(a => {
+      const b = document.createElement('button'); b.className = 'btn ' + (a.cls || ''); b.textContent = a.label;
+      b.onclick = () => { m.remove(); res(a.value); }; box.appendChild(b);
+    });
+    m.onclick = e => { if (e.target === m) { m.remove(); res(null); } };
+    document.body.appendChild(m); box.lastChild && box.lastChild.focus();
+  });
+}
+const confirmBox = (t, b, ok = '확인', cls = 'pri') => modal(t, `<p class="muted">${b}</p>`, [{ label:'취소', value:false }, { label:ok, value:true, cls }]);
+
+/* ===== 서버 호출 ===== */
+// 로그인된 상태에서 접속코드가 거부되면(코드 변경·잠금) 자동 갱신을 멈추고 로그아웃 → 실패가 쌓여 잠기는 것을 막음
+const AUTH_FAIL = /접속코드가 맞지 않습니다|다시 로그인해 주세요/;
+function sessionExpired() {
+  clearInterval(timer); timer = null;
+  S = null; D = null; form = null; store.set('jd_sess', null);
+  history.replaceState(null, '', '#/');
+  renderDemo(); renderLanding('접속코드가 바뀌었거나 맞지 않아 로그아웃되었습니다. 받은 코드로 다시 로그인해 주세요.');
+}
+async function rpc(fn, args) {
+  try { return await rpcRaw(fn, args); }
+  catch (e) { if (S && AUTH_FAIL.test(e.message) && fn !== 'jd_login') sessionExpired(); throw e; }
+}
+async function rpcRaw(fn, args) {
+  if (!CFG.url) return Mock.call(fn, args);
+  const headers = { 'Content-Type':'application/json', apikey: CFG.key };
+  if (!CFG.key.startsWith('sb_')) headers.Authorization = 'Bearer ' + CFG.key;
+  let r;
+  try { r = await fetch(CFG.url.replace(/\/$/, '') + '/rest/v1/rpc/' + fn, { method:'POST', headers, body: JSON.stringify(args) }); }
+  catch { throw new Error('서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.'); }
+  if (!r.ok) throw new Error('서버 응답 오류(' + r.status + ')');
+  const d = await r.json();
+  if (d && d.error) throw new Error(d.error);
+  return d;
+}
+
+/* 시연 모드: 서버와 같은 규칙을 이 브라우저 안에서 흉내냄 */
+const Mock = (() => {
+  const TEAMS = [
+    [1,'교육혁신','실습·시뮬레이션 프로그램 개발','아연도금강판 염수분무 부식속도 시뮬레이션 실습 프로그램','단체','재료공학과 강수영 등 2명'],
+    [2,'교육혁신','학습 지원 프로그램 개발','나에게 맞는 프로그램을 찾아주는 AI 비교과 길라잡이','개인','사업통합관리팀 이상직'],
+    [3,'교육혁신','학습 지원 프로그램 개발','학생 성장 중심 AI 맞춤형 학습·비교과 설계 지원 플랫폼','단체','교육과정혁신센터 김영서 등 3명'],
+    [4,'행정혁신','학생·교직원 대상 서비스 프로그램 개발','학생지원 서비스 개선 및 맞춤형 정보 제공 방안','단체','항공운항과 하수빈 등 2명'],
+    [5,'행정혁신','학생·교직원 대상 서비스 프로그램 개발','여비 산정 자동화 웹계산기 구축 / 사무처 민원 응대 AI 챗봇 구축','개인','사무처 김종호'],
+    [6,'행정혁신','행정업무 개선 및 자동화 프로그램 개발','지식재산 전주기 관리 및 실태조사 지원 플랫폼 구축','개인','산학·연구지원팀 박형준'],
+    [7,'행정혁신','행정업무 개선 및 자동화 프로그램 개발','(통합)학생 3-In 인증 운영 데이터 취합·통계 및 이수 현황 안내 자동화','단체','교수학습지원센터 김세환 등 2명'],
+    [8,'행정혁신','행정업무 개선 및 자동화 프로그램 개발','재정지원사업 예산 및 집행률 통합관리 대시보드','개인','사업통합관리팀 김미영'],
+    [9,'행정혁신','행정업무 개선 및 자동화 프로그램 개발','재정지원사업 예산·성과 통합관리시스템「ANCHOR Hub」','개인','지산학협력팀 이태현'],
+    [10,'행정혁신','행정업무 개선 및 자동화 프로그램 개발','입학전형 면접 평가·진행위원 신청·선발·위촉 통합관리시스템 구축','개인','입학팀 손승희'],
+    [11,'행정혁신','행정업무 개선 및 자동화 프로그램 개발','외국인 유학생의 입학 전 단계의 업무를 전산화','개인','국제교류팀 김경하'],
+    [12,'행정혁신','행정업무 개선 및 자동화 프로그램 개발','입학정보시스템 전산화','단체','입학처 조규철 등 2명'],
+  ];
+  const fresh = () => ({
+    closed:false, recuse:[], scores:[], excluded:[], sent:[], awards:{ grand:1, fields:{ '교육혁신':{ best:1, enc:2 }, '행정혁신':{ best:1, enc:2 } } },
+    judges:[0,1,2,3,4,5,6].map(n => ({ no:n, name: n ? '심사위원 ' + n : '관리자', code: 'DEMO000' + n })),
+    teams:TEAMS.map(([team_no,field,theme,title,kind,members]) => ({ team_no,field,theme,title,kind,members,report_url:'',demo_url:'',video_url:'' })),
+  });
+  const load = () => Object.assign({ excluded:[], sent:[] }, store.get('jd_demo', localStorage) || fresh());
+  const FILES = {};                     // 시연용 PDF는 새로고침하면 사라짐(메모리 보관)
+  const save = db => store.set('jd_demo', db, localStorage);
+  const norm = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const auth = (db, no, code) => { const j = db.judges.find(x => x.no === no); return j && j.code && j.code === norm(code); };
+  const payload = (db, no) => ({
+    judge: { no, name: db.judges.find(x => x.no === no).name }, closed: db.closed,
+    teams: db.teams.filter(t => no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === t.team_no))
+      .map(t => { if (no === 0) return t; const { kind, members, ...rest } = t; return rest; }),   // 블라인드 심사
+    scores: db.scores.filter(s => no === 0 || s.judge_no === no),
+    files: Object.values(FILES).filter(f => f.complete && (no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === f.team_no)))
+      .map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name: no === 0 ? name : `결과보고서_${team_no}번.pdf`, size, chunks, uploaded_at })),
+    excluded: no === 0 ? db.excluded : [],
+    awards: no === 0 ? db.awards : null,
+    sent: db.sent.filter(x => no === 0 || x.judge_no === no),
+  });
+  const err = e => ({ error: e });
+  function call(fn, a) {
+    const db = load(); let out;
+    if (fn === 'jd_judge_names') out = db.judges.filter(x => x.no > 0).map(x => ({ no:x.no, name:x.name }));
+    else if (fn === 'jd_login') out =auth(db, a.p_judge, a.p_code) ? payload(db, a.p_judge) : err('접속코드가 맞지 않습니다.');
+    else if (fn === 'jd_save') out = mSave(db, a);
+    else if (fn === 'jd_admin') out = mAdmin(db, a);
+    else if (fn === 'jd_file_put') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mPut(a);
+    else if (fn === 'jd_file_get') out = !auth(db, a.p_judge, a.p_code) ? err('다시 로그인해 주세요.') : FILES[a.p_team]?.complete ? { data:FILES[a.p_team].parts[a.p_idx] } : err('등록된 결과보고서가 없습니다.');
+    else if (fn === 'jd_file_del') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (delete FILES[a.p_team], { ok:true });
+    else if (fn === 'jd_send') out = mSend(db, a);
+    else if (fn === 'jd_unsend') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.')
+      : (db.sent = db.sent.filter(x => x.judge_no !== a.p_judge), db.scores.forEach(s => { if (s.judge_no === a.p_judge) s.submitted = false; }), { ok:true });
+    else if (fn === 'jd_issue_code') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mIssue(db, a.p_judge);
+    else if (fn === 'jd_view_code') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : { code: db.judges.find(x => x.no === a.p_judge)?.plain || null };
+    else if (fn === 'jd_set_awards') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (db.awards = a.p_awards, { ok:true });
+    else if (fn === 'jd_exclude') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mExclude(db, a);
+    else out = err('알 수 없는 요청입니다.');
+    save(db);
+    return new Promise((res, rej) => setTimeout(() => out.error ? rej(new Error(out.error)) : res(JSON.parse(JSON.stringify(out))), 120));
+  }
+  function mIssue(db, no) {
+    const al = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c = '';
+    for (let k = 0; k < 8; k++) c += al[Math.floor(Math.random() * 32)];
+    const j = db.judges.find(x => x.no === no); j.plain = c.slice(0, 4) + '-' + c.slice(4); j.code = norm(j.plain);
+    return { code:j.plain };
+  }
+  function mSend(db, a) {
+    const no = a.p_judge;
+    if (no === 0 || !auth(db, no, a.p_code)) return err('다시 로그인해 주세요.');
+    if (db.sent.some(x => x.judge_no === no)) return err('이미 결과를 전송했습니다.');
+    const full = s => s && s.items.length === 8 && s.items.every(v => v != null);
+    const miss = db.teams.filter(t => !db.recuse.some(r => r.judge_no === no && r.team_no === t.team_no)
+      && !full(db.scores.find(s => s.judge_no === no && s.team_no === t.team_no))).length;
+    if (miss) return err('평가를 마치지 않은 팀이 ' + miss + '개 있습니다.');
+    db.scores.forEach(s => { if (s.judge_no === no) s.submitted = true; });
+    db.sent.push({ judge_no:no, at:new Date().toISOString() });
+    return payload(db, no);
+  }
+  function mPut(a) {
+    if (a.p_idx === 0) {
+      if (!atob(a.p_data.slice(0, 8)).startsWith('%PDF')) return err('PDF 파일만 올릴 수 있습니다.');
+      FILES[a.p_team] = { team_no:a.p_team, name:a.p_name, size:a.p_size, chunks:a.p_total, parts:[], complete:false, uploaded_at:new Date().toISOString() };
+    }
+    const f = FILES[a.p_team]; f.parts[a.p_idx] = a.p_data;
+    if (a.p_idx === a.p_total - 1) f.complete = f.parts.filter(Boolean).length === a.p_total;
+    return { ok:true };
+  }
+  function mExclude(db, a) {
+    db.excluded = db.excluded.filter(x => x.team_no !== a.p_team);
+    if (a.p_on) {
+      if (!String(a.p_reason || '').trim()) return err('제외 사유를 입력하세요.');
+      db.excluded.push({ team_no:a.p_team, reason:String(a.p_reason).trim().slice(0, 500), at:new Date().toISOString() });
+    }
+    return { ok:true };
+  }
+  function mSave(db, a) {
+    const no = a.p_judge;
+    if (no === 0 || !auth(db, no, a.p_code)) return err('다시 로그인해 주세요.');
+    if (db.closed) return err('심사가 마감되어 저장할 수 없습니다.');
+    if (db.sent.some(x => x.judge_no === no)) return err('결과를 전송해 수정할 수 없습니다. 수정이 필요하면 사업통합관리팀(2453)에 요청하세요.');
+    if (db.recuse.some(r => r.judge_no === no && r.team_no === a.p_team)) return err('회피 대상 평가팀입니다.');
+    for (let i = 0; i < 8; i++) {
+      const v = a.p_items[i];
+      if (v != null && !RT.map(r => MAX[i] * r).includes(v)) return err((i + 1) + '번 항목 점수가 등급 점수가 아닙니다.');
+    }
+    const i = db.scores.findIndex(s => s.judge_no === no && s.team_no === a.p_team);
+    const row = { judge_no:no, team_no:a.p_team, items:a.p_items, comment:(a.p_comment || '').slice(0, 2000), submitted:false, updated_at:new Date().toISOString() };
+    i >= 0 ? db.scores[i] = row : db.scores.push(row);
+    return payload(db, no);
+  }
+  function mAdmin(db, a) {
+    if (!auth(db, 0, a.p_code)) return err('관리자 접속코드가 맞지 않습니다.');
+    const g = a.p_args || {}, j = g.judge_no, t = g.team_no; let code = null;
+    const drop = () => db.scores = db.scores.filter(s => !(s.judge_no === j && s.team_no === t));
+    switch (a.p_action) {
+      case 'set_judge': db.judges.find(x => x.no === j && j > 0).name = String(g.name).trim().slice(0, 40); break;
+      case 'issue_code': { const al = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c = ''; for (let k = 0; k < 8; k++) c += al[Math.floor(Math.random() * 32)];
+        code = c.slice(0, 4) + '-' + c.slice(4); db.judges.find(x => x.no === j).code = norm(code); break; }
+      case 'unlock': db.scores.forEach(s => { if (s.judge_no === j && s.team_no === t) s.submitted = false; }); break;
+      case 'delete_score': drop(); break;
+      case 'recuse': if (g.on) { if (!db.recuse.some(r => r.judge_no === j && r.team_no === t)) db.recuse.push({ judge_no:j, team_no:t }); drop(); }
+                     else db.recuse = db.recuse.filter(r => !(r.judge_no === j && r.team_no === t)); break;
+      case 'set_team': Object.assign(db.teams.find(x => x.team_no === t), { report_url:g.report_url || '', demo_url:g.demo_url || '', video_url:g.video_url || '' }); break;
+      case 'close': db.closed = !!g.closed; break;
+      case 'demo_fill': {   // 시연용 예시 점수: 위원마다 채점 성향(관대·엄격)을 다르게
+        db.scores = [];
+        const bias = [0, .25, -.35, .1, -.1, .45, -.2];
+        for (const jj of [1,2,3,4,5,6]) for (const tm of db.teams) {
+          if (db.recuse.some(r => r.judge_no === jj && r.team_no === tm.team_no)) continue;
+          const q = ((tm.team_no * 37) % 11) / 10 - .5;
+          const items = MAX.map((m, k) => { const x = 1.6 + q * 2 + bias[jj] * 2.2 + (((jj * 13 + tm.team_no * 7 + k * 5) % 7) - 3) * .35;
+            return m * RT[Math.max(0, Math.min(5, Math.round(x)))]; });
+          db.scores.push({ judge_no:jj, team_no:tm.team_no, items, comment:'', submitted:true, updated_at:new Date().toISOString() });
+        }
+        db.sent = [1,2,3,4,5,6].map(n => ({ judge_no:n, at:new Date().toISOString() }));
+        break; }
+      case 'demo_reset': Object.assign(db, fresh()); break;
+      case 'load': break;
+      default: return err('알 수 없는 작업입니다.');
+    }
+    const out = Object.assign(payload(db, 0), {
+      judges: db.judges.filter(x => x.no > 0).map(x => ({ no:x.no, name:x.name, has_code:!!x.code })),
+      recuse: db.recuse,
+    });
+    if (code) out.new_code = code;
+    return out;
+  }
+  return { call };
+})();
+
+/* ===== 결과보고서 PDF: 1MB 조각으로 올리고 받아서 브라우저 안에서 합침 ===== */
+const CHUNK = 1024 * 1024, PDF_MAX = 50 * 1024 * 1024;
+const fileOf = t => (D?.files || []).find(f => f.team_no === t);
+const fsize = n => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+const toB64 = blob => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(String(r.result).split(',')[1] || '');
+  r.onerror = () => rej(new Error('파일을 읽지 못했습니다.'));
+  r.readAsDataURL(blob);
+});
+async function uploadPdf(team, file, onProg) {
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') throw new Error('PDF 파일만 올릴 수 있습니다.');
+  if (!file.size || file.size > PDF_MAX) throw new Error('파일 크기는 50MB 이하여야 합니다.');
+  const total = Math.ceil(file.size / CHUNK);
+  for (let i = 0; i < total; i++) {
+    const data = await toB64(file.slice(i * CHUNK, (i + 1) * CHUNK));
+    await rpc('jd_file_put', { p_code:S.code, p_team:team, p_idx:i, p_total:total, p_name:file.name, p_size:file.size, p_data:data });
+    onProg(i + 1, total);
+  }
+}
+const pdfCache = {};
+async function loadPdf(team, onProg) {
+  const f = fileOf(team), key = team + '|' + f.uploaded_at;
+  if (pdfCache[key]) return pdfCache[key];
+  const parts = [];
+  for (let i = 0; i < f.chunks; i++) {
+    const r = await rpc('jd_file_get', { p_judge:S.no, p_code:S.code, p_team:team, p_idx:i });
+    const bin = atob(r.data), u = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+    parts.push(u); onProg && onProg(i + 1, f.chunks);
+  }
+  return pdfCache[key] = { url:URL.createObjectURL(new Blob(parts, { type:'application/pdf' })), name:f.name };
+}
+
+/* ===== 상태 ===== */
+let S = store.get('jd_sess');          // { no, code }
+let D = null;                          // 서버에서 받은 자료
+let form = null;                       // 작성 중인 평가표 { team, items, comment, dirty }
+let viewerOn = false, adminTab = 'judges', openDet = new Set(), timer = null;
+
+const isAdmin = () => S && S.no === 0;
+const go = hash => { location.hash = hash; };
+
+async function login(no, code) {
+  D = no === 0 ? await rpc('jd_admin', { p_code:code, p_action:'load', p_args:{} }) : await rpc('jd_login', { p_judge:no, p_code:code });
+  S = { no, code }; store.set('jd_sess', S);
+}
+function logout() {
+  if (form && form.dirty && !window.confirm('저장하지 않은 평가가 있습니다. 로그아웃할까요?')) return;
+  clearInterval(timer); timer = null;
+  S = null; D = null; form = null; store.set('jd_sess', null); go('#/'); route();
+}
+
+/* ===== 라우팅 ===== */
+window.addEventListener('hashchange', () => {
+  if (form && form.dirty && location.hash !== '#/team/' + form.team) {
+    if (!window.confirm('저장하지 않은 평가가 있습니다. 이 화면을 떠날까요?')) { history.replaceState(null, '', '#/team/' + form.team); return; }
+  }
+  route();
+});
+window.addEventListener('beforeunload', e => { if (form && form.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+async function route() {
+  clearInterval(timer); timer = null;
+  const p = location.hash.replace(/^#\/?/, '').split('/');
+  renderDemo();
+  if (!S) { form = null; return renderLanding(); }
+  if (!D) {
+    $('#app').innerHTML = '<div class="spin">불러오는 중…</div>';
+    try { await login(S.no, S.code); } catch (e) { S = null; store.set('jd_sess', null); return renderLanding(e.message); }
+  }
+  if (isAdmin()) { form = null; if (p[0] !== 'admin') return go('#/admin'); adminTab = p[1] || adminTab; return renderAdmin(); }
+  if (p[0] === 'team' && D.teams.some(t => t.team_no === +p[1])) return renderTeam(+p[1]);
+  form = null;
+  if (p[0] !== 'home') return go('#/home');
+  renderHome();
+}
+
+function renderDemo() {
+  $('#demo').innerHTML = CFG.url ? '' :
+    `<div class="demo"><div class="wrap"><b>시연 모드</b> · 서버에 연결되지 않아 이 브라우저 안에만 저장됩니다. 접속코드: 관리자 <b>DEMO-0000</b>, 심사위원 N은 <b>DEMO-000N</b></div></div>`;
+}
+function renderTop() {
+  const who = S ? `<span class="who">${h(D?.judge?.name || '')}${isAdmin() ? '' : ' 위원님'}</span><button class="btn ghost sm" id="out">로그아웃</button>` : '';
+  // 머리글: 전체 시스템(상위) › 이 심사
+  $('#top').innerHTML = `<a class="brand" href="../">전문대학 혁신지원사업 온라인 심사 시스템</a><span class="bsep" aria-hidden="true">›</span><span class="bprog" id="home" role="link" tabindex="0">2026 AX 우수사례 육성 프로그램</span><div class="sp"></div>${who}`;
+  $('#home').onclick = () => go(S ? (isAdmin() ? '#/admin' : '#/home') : '#/');
+  $('#home').onkeydown = e => { if (e.key === 'Enter') $('#home').click(); };
+  if (S) $('#out').onclick = logout;
+}
+
+/* ===== 랜딩·로그인 ===== */
+function renderLanding(msg) {
+  renderTop();
+  const sheetRows = AREAS.map(a => a.items.map((i, k) => `<tr>${k ? '' : `<td class="sa" rowspan="${a.items.length}" style="box-shadow:inset 4px 0 0 ${a.c}">${a.name}<small>${a.max}점</small></td>`}
+    <td class="l">${CRIT[i].name}</td>${RT.map((r, g) => `<td class="pt${g ? '' : ' top1'}">${CRIT[i].max * r}</td>`).join('')}</tr>`).join('')).join('');
+  $('#app').innerHTML = `
+  <section class="masthead"><div class="wrap">
+    <div class="mh-text"><h1>2026 AX <span style="white-space:nowrap">교육·행정혁신</span> 우수사례 육성 프로그램</h1>
+    <p>결과보고서와 시제품(실행링크·시연 영상)을 함께 보고, 8개 평가요소마다 S부터 E까지 6단계 등급을 매깁니다.</p></div>
+    <dl class="spec">
+      <div><dt>심사기간</dt><dd>${PERIOD}</dd></div>
+      <div><dt>심사 대상</dt><dd>12개 사례</dd></div>
+      <div><dt>심사위원</dt><dd>6명</dd></div>
+      <div><dt>배점</dt><dd>4개 영역 8개 요소, 100점</dd></div>
+    </dl>
+  </div></section>
+  <div class="wrap land">
+    <div>
+      <section class="card sheetform">
+        <h2>심사기준표</h2>
+        ${mixBar()}
+        <div style="overflow-x:auto"><table class="areas">
+          <thead><tr><th>심사항목</th><th>평가요소</th>${GR.map(g => `<th class="n">${g}</th>`).join('')}</tr></thead>
+          <tbody>${sheetRows}</tbody>
+        </table></div>
+        <div class="grade-key">
+          <div><b>S (100%)</b>요구사항을 완벽하게 수용하고 증빙과 작동 실체가 확인됨</div>
+          <div><b>A~B (80~60%)</b>대부분 충족하나 세부 논리나 기능 완성도가 일부 미흡함</div>
+          <div><b>C~E (40~0%)</b>핵심 내용 누락, 기능 미구동, 기획과 결과물 불일치</div>
+        </div>
+      </section>
+      <section class="card pad">
+        <h2 style="font-size:18px;margin-bottom:10px">점수 산정 방식</h2>
+        <ol class="steps">
+          <li><b>원점수</b>8개 평가요소마다 S(100%)·A(80%)·B(60%)·C(40%)·D(20%)·E(0%) 등급을 고르면 배점에 비율을 곱한 점수가 매겨지고, 8개 점수의 합(100점 만점)이 원점수입니다.</li>
+          <li><b>위원별 Z 표준화</b>후하게 주는 위원과 짜게 주는 위원의 차이를 없애기 위해, 위원마다 자신이 평가한 전체 사례 원점수의 평균·표준편차로 점수를 바꿉니다.
+            <div class="fx">Z점수 = (원점수 − 그 위원의 평균) ÷ 그 위원의 표준편차</div>
+            <span class="muted tiny">0은 그 위원의 평균, +1은 평균보다 표준편차 1만큼 높은 평가를 뜻합니다.</span></li>
+          <li><b>최고·최저 제외 평균</b>특정 사례에만 치우친 평가를 배제하기 위해, 사례별로 위원들의 Z점수 중 최고와 최저를 하나씩 빼고 나머지 위원의 평균을 냅니다. 이 <b>Z점수 평균</b>이 높은 순서로 순위를 정합니다.</li>
+          <li><b>시상 대상 거르기</b>원점수도 같은 방식(최고·최저 제외 평균)으로 계산해 <b>70점 미만</b>인 사례는 시상 대상에서 제외합니다. 이후 심사위원회 판단에 따라 사유를 기록하고 추가로 제외할 수 있습니다. 제외된 사례의 점수는 지우지 않으며, 위원별 평균·표준편차 계산에는 그대로 포함됩니다.</li>
+          <li><b>동점 처리</b>Z점수 평균이 같으면 원점수 평균, 그다음 ‘문제 해결 및 목적 달성도’(문항 3) 평균이 높은 사례가 앞섭니다. 모두 같으면 심사위원회에서 결정합니다.</li>
+          <li><b>시상</b><b>대상</b>은 분야 구분 없이 전체 순위로, <b>우수상</b>·<b>장려상</b>은 대상 수상팀을 뺀 분야별(교육혁신·행정혁신) 순위로 정합니다.</li>
+          <li><b>결과 전송</b>사례별 평가는 저장 후에도 자유롭게 고칠 수 있습니다. 모든 사례를 평가한 뒤 ‘결과 전송’을 누르면 점수가 확정되며, 전송된 점수만 집계에 반영됩니다.</li>
+        </ol>
+      </section>
+    </div>
+    <aside>
+      <form class="card pad login" id="lf" autocomplete="off">
+        <h2>심사위원 로그인</h2>
+        <p class="muted tiny" style="margin:0">사업통합관리팀에서 받은 접속코드를 입력하세요.</p>
+        <label class="field"><span>구분</span>
+          <select class="inp" id="lno">${[1,2,3,4,5,6].map(n => `<option value="${n}">심사위원 ${n}</option>`).join('')}<option value="0">관리자</option></select></label>
+        <label class="field"><span>접속코드</span><input class="inp" id="lcode" placeholder="예: AB12-CD34" autocapitalize="characters" spellcheck="false"></label>
+        <div class="err" id="lerr">${h(msg || '')}</div>
+        <button class="btn pri" style="width:100%;padding:11px" id="lbtn">로그인</button>
+      </form>
+    </aside>
+  </div>`;
+  rpc('jd_judge_names', {}).then(list => {
+    (list || []).forEach(j => { const o = document.querySelector(`#lno option[value="${j.no}"]`); if (o && j.name) o.textContent = j.name; });
+  }).catch(() => {});                   // 함수가 아직 없으면 '심사위원 N' 그대로
+  $('#lf').onsubmit = async e => {
+    e.preventDefault();
+    const no = +$('#lno').value, code = $('#lcode').value.trim();
+    if (!code) { $('#lerr').textContent = '접속코드를 입력하세요.'; return; }
+    $('#lbtn').disabled = true; $('#lerr').textContent = '';
+    try { await login(no, code); go(no === 0 ? '#/admin' : '#/home'); route(); }
+    catch (er) { $('#lerr').textContent = er.message + (AUTH_FAIL.test(er.message) && !/잠깁니다/.test(er.message) ? ' 10번 이상 틀리면 10분 동안 로그인이 잠깁니다.' : ''); $('#lbtn').disabled = false; }
+  };
+}
+
+/* ===== 심사위원: 평가팀 목록 ===== */
+const myScore = t => D.scores.find(s => s.team_no === t && s.judge_no === S.no);
+// 팀별 상태: 미평가 → 작성 중(빈 문항 있음) → 평가 완료(8문항 모두) → 전송됨(결과 전송 후 잠김)
+const isFull = s => !!s && s.items.length === 8 && s.items.every(v => v != null);
+const sentAt = no => (D.sent || []).find(x => x.judge_no === no)?.at || null;
+function statusBadge(s) {
+  if (!s) return '<span class="badge b-none">미평가</span>';
+  if (s.submitted) return '<span class="badge b-ok">전송됨</span>';
+  return isFull(s) ? '<span class="badge b-navy">평가 완료</span>' : '<span class="badge b-warn">작성 중</span>';
+}
+function renderHome() {
+  renderTop();
+  const done = D.teams.filter(t => isFull(myScore(t.team_no))).length, n = D.teams.length, sent = sentAt(S.no);
+  const fields = [...new Set(D.teams.map(t => t.field))];
+  $('#app').innerHTML = `<div class="wrap">
+    <div class="pagehead">
+      <div><h1>평가팀 목록</h1><div class="muted">사례를 눌러 평가표를 작성하세요. ${D.closed ? '<span class="badge b-bad">심사 마감</span>' : ''}</div></div>
+      <div class="prog"><div class="tiny muted" style="display:flex;justify-content:space-between"><span>평가 진행</span><b>${done} / ${n}</b></div>
+        <div class="ticks">${D.teams.map(t => { const s = myScore(t.team_no), st = !s ? 'none' : s.submitted ? 'sent' : isFull(s) ? 'full' : 'draft';
+          return `<a class="tk tk-${st}" href="#/team/${t.team_no}" title="${t.team_no}번 ${({ none:'미평가', draft:'작성 중', full:'평가 완료', sent:'전송됨' })[st]}">${t.team_no}</a>`; }).join('')}</div>
+        <div class="tk-leg tiny muted"><span><i class="tk-full"></i>평가 완료</span><span><i class="tk-draft"></i>작성 중</span><span><i class="tk-none"></i>미평가</span></div></div>
+    </div>
+    <div class="note"><b>심사 시 유의사항</b><ul>
+      <li>실행링크 접속에 문제가 있으면 즉시 감점하지 말고 첨부된 시연 영상으로 기능 실체를 먼저 확인합니다.</li>
+      <li>최고 배점(20점)인 ‘문제 해결 및 목적 달성도’는 결과보고서 기획 내용과 시제품 작동 모습이 부합하는지 엄격히 점검합니다.</li>
+      <li>평가는 ‘저장’만 하면 되고, 결과를 전송하기 전까지는 언제든 다시 열어 고칠 수 있습니다.</li>
+      <li>모든 팀 평가를 마친 뒤 아래 <b>결과 전송</b>을 누르면 점수가 확정되어 더 이상 수정할 수 없습니다. 수정이 필요하면 사업통합관리팀(2453)에 요청하세요.</li>
+    </ul></div>
+    <div class="card pad sendbox ${sent ? 'sent' : ''}">
+      ${sent ? `<div><b>결과 전송 완료</b><div class="muted tiny">${new Date(sent).toLocaleString('ko-KR')} · 점수가 확정되어 수정할 수 없습니다. 수정이 필요하면 사업통합관리팀(2453)에 요청하세요.</div></div>`
+        : `<div><b>결과 전송</b><div class="muted tiny">${done < n ? `평가를 마치지 않은 팀이 ${n - done}개 있습니다. 모든 팀을 평가하면 전송할 수 있습니다.` : '모든 팀 평가를 마쳤습니다. 점수를 확인한 뒤 전송하세요. 전송 후에는 수정할 수 없습니다.'}</div></div>
+           <button class="btn pri" id="send" ${done < n || D.closed ? 'disabled' : ''}>결과 전송</button>`}
+    </div>
+    ${fields.map(fd => `<div class="grp">${h(fd)} <span class="badge">${D.teams.filter(t => t.field === fd).length}개 사례</span></div>
+      <div class="teams">${D.teams.filter(t => t.field === fd).map(t => { const s = myScore(t.team_no);
+        return `<div class="team" tabindex="0" role="link" data-t="${t.team_no}">
+          <span class="no">${t.team_no}</span>
+          <span class="tx"><span class="th">${h(t.theme)}</span><span class="t" style="display:block">${h(t.title)}</span></span>
+          ${statusBadge(s)}<span class="score">${s ? sum(s.items) + '점' : ''}</span>
+        </div>`; }).join('')}</div>`).join('')}
+    <div style="height:40px"></div></div>`;
+  if ($('#send')) $('#send').onclick = async () => {
+    const rows = D.teams.map(t => `<tr><td>${t.team_no}</td><td class="l">${h(t.title)}</td><td class="n"><b>${sum(myScore(t.team_no).items)}</b></td></tr>`).join('');
+    if (!await modal('결과를 전송할까요?', `<p class="muted" style="margin-top:0">전송하면 점수가 확정되어 더 이상 수정할 수 없습니다.</p>
+      <div class="tbl-wrap" style="max-height:45vh;overflow:auto"><table class="t"><thead><tr><th>번호</th><th>사례명</th><th class="n">총점</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+      [{ label:'취소', value:false }, { label:'전송', value:true, cls:'pri' }])) return;
+    try { D = Object.assign(D, await rpc('jd_send', { p_judge:S.no, p_code:S.code })); toast('결과를 전송했습니다. 수고하셨습니다.'); renderHome(); }
+    catch (e) { toast(e.message); }
+  };
+  document.querySelectorAll('.team').forEach(el => {
+    el.onclick = () => go('#/team/' + el.dataset.t);
+    el.onkeydown = e => { if (e.key === 'Enter') go('#/team/' + el.dataset.t); };
+  });
+}
+
+/* ===== 심사위원: 평가표 ===== */
+function renderTeam(no) {
+  renderTop();
+  const t = D.teams.find(x => x.team_no === no), s = myScore(no);
+  if (!form || form.team !== no) form = { team:no, items: s ? s.items.slice() : Array(8).fill(null), comment: s ? s.comment : '', dirty:false };
+  const lock = !!sentAt(S.no) || D.closed;
+  const idx = D.teams.findIndex(x => x.team_no === no), prev = D.teams[idx - 1], next = D.teams[idx + 1];
+  const link = (u, l, w) => u ? `<a href="${h(u)}" target="_blank" rel="noopener" class="pop" data-w="${w}">${l} ↗</a>` : `<span>${l} (등록 전)</span>`;
+  const pdf = fileOf(no);
+  $('#app').innerHTML = `<div class="wrap tpage" id="tp"><div class="tlayout">
+    <aside class="card viewer" id="vw" hidden>
+      <div class="vbar"><b>결과보고서</b><span class="muted tiny" id="vn"></span><span class="sp"></span>
+        <a class="btn sm" id="vo" target="_blank" rel="noopener" hidden>새 창에서 보기</a><a class="btn sm pri" id="vd" hidden>다운로드</a><button type="button" class="btn sm" id="vx">닫기</button></div>
+      <div id="vb" class="vbody"></div>
+    </aside>
+    <div class="tform">
+    <div class="crumb"><a href="#/home">← 평가팀 목록</a></div>
+    <div class="card tinfo">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="badge b-navy">${t.team_no}번</span><span class="muted tiny">${h(t.field)}</span><span class="muted tiny">${h(t.theme)}</span><span style="margin-left:auto">${statusBadge(s)}</span></div>
+      <h1>${h(t.title)}</h1>
+      <div class="links">${pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span>결과보고서 (등록 전)</span>'}${link(t.demo_url, '시제품 실행링크', 'jd_demo')}${link(t.video_url, '시연 영상', 'jd_video')}</div>
+    </div>
+    ${lock ? `<div class="note">${D.closed ? '심사가 마감되어 평가를 수정할 수 없습니다.' : '결과를 전송해 점수가 확정되었습니다. 수정이 필요하면 사업통합관리팀(2453)에 요청하세요.'}</div>` : ''}
+    <div class="legend">
+      <div><b>S (100%)</b>요구사항을 완벽하게 수용하고 구체적 증빙과 작동 실체가 확인됨</div>
+      <div><b>A~B (80~60%)</b>대부분 충족하나 일부 세부 논리나 기능 완성도가 미흡함</div>
+      <div><b>C~E (40~0%)</b>핵심 내용 누락, 기능 미구동, 기획과 결과물 불일치 등 보완이 크게 필요함</div>
+    </div>
+    ${AREAS.map(a => `<div class="area" style="border-bottom-color:${a.c}"><i class="adot" style="background:${a.c}"></i><h2>${a.name}</h2><span class="muted">${a.max}점</span></div>
+      ${a.items.map(i => { const c = CRIT[i];
+        return `<div class="card item" id="it${i}" style="border-left:3px solid ${a.c}">
+          <div class="ihead"><span class="badge b-navy">문항 ${i + 1}</span><h3>${c.name}</h3><span class="pts" id="pv${i}"></span></div>
+          <p class="iq">${c.q}</p>
+          <div class="src">주요 검토 자료 · ${c.src}</div>
+          ${c.strict ? `<div class="tiny" style="color:var(--accent);margin-top:6px;font-weight:600">※ ${c.strict}</div>` : ''}
+          <details class="guide"><summary>중점 점검 요소</summary><ul>${c.pts.map(p => `<li><b>${p[0]}</b><br>${p[1]}</li>`).join('')}</ul></details>
+          <div class="grades" role="radiogroup" aria-label="${c.name} 등급">${GR.map((g, k) => `<button type="button" class="g" role="radio" data-i="${i}" data-v="${c.max * RT[k]}" ${lock ? 'disabled' : ''}><b>${g}</b><small>${c.max * RT[k]}점</small></button>`).join('')}</div>
+        </div>`; }).join('')}`).join('')}
+    <div class="area"><h2>심사 의견</h2><span class="muted">선택</span></div>
+    <textarea class="inp" id="cmt" placeholder="우수한 점, 보완이 필요한 점 등을 자유롭게 적어 주세요." ${lock ? 'disabled' : ''}>${h(form.comment)}</textarea>
+    <div class="pager">${prev ? `<a class="btn" href="#/team/${prev.team_no}">← ${prev.team_no}번</a>` : '<span></span>'}${next ? `<a class="btn" href="#/team/${next.team_no}">${next.team_no}번 →</a>` : '<span></span>'}</div>
+  </div></div></div>
+  <div class="sticky"><div class="wrap">
+    <div class="subs" id="subs"></div>
+    <div class="total" id="tot"></div>
+    ${lock ? '' : '<button class="btn pri" id="sv">저장</button>'}
+  </div></div>`;
+  const paint = () => {
+    document.querySelectorAll('.g').forEach(b => { const on = form.items[+b.dataset.i] === +b.dataset.v; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+    CRIT.forEach((c, i) => { $('#pv' + i).textContent = (form.items[i] == null ? '–' : form.items[i]) + ' / ' + c.max; });
+    $('#subs').innerHTML = `<div class="scorebar">${AREAS.map(a => { const v = sum(a.items.map(i => form.items[i]));
+        return `<div class="sb-seg" style="flex:${a.max}"><i style="width:${v / a.max * 100}%;background:${a.c}"></i></div>`; }).join('')}</div>
+      <div class="sb-leg">${AREAS.map(a => `<span><i style="background:${a.c}"></i>${a.name} <b>${sum(a.items.map(i => form.items[i]))}</b>/${a.max}</span>`).join('')}</div>`;
+    const left = form.items.filter(v => v == null).length;
+    $('#tot').innerHTML = `${sum(form.items)}<small> / 100${left ? ` · 미선택 ${left}` : ''}</small>`;
+  };
+  paint();
+  // 실행링크·시연 영상은 팝업 창으로(화면의 80% 크기, 가운데). 팝업이 막히면 새 탭으로 열림
+  document.querySelectorAll('.links a.pop').forEach(a => a.onclick = e => {
+    const W = Math.round(screen.availWidth * .8), H = Math.round(screen.availHeight * .8);
+    const L = Math.round((screen.availWidth - W) / 2 + (screen.availLeft || 0)), T = Math.round((screen.availHeight - H) / 2 + (screen.availTop || 0));
+    const win = window.open(a.href, a.dataset.w, `popup=yes,width=${W},height=${H},left=${L},top=${T},resizable=yes,scrollbars=yes`);
+    if (win) { e.preventDefault(); try { win.opener = null; } catch {} win.focus(); }
+  });
+  if (pdf) {
+    // 넓은 화면: 왼쪽 결과보고서 · 오른쪽 평가표 / 좁은 화면: 평가표 위에 결과보고서
+    const wide = () => matchMedia('(min-width: 1100px)').matches;
+    const close = () => { $('#vw').hidden = true; $('#tp').classList.remove('split'); $('#rv').textContent = `결과보고서 보기 (PDF ${fsize(pdf.size)})`; viewerOn = false; };
+    $('#rv').onclick = async () => {
+      const box = $('#vw');
+      if (!box.hidden) return close();
+      box.hidden = false; viewerOn = true; $('#vn').textContent = pdf.name + ' · ' + fsize(pdf.size);
+      $('#rv').textContent = '결과보고서 닫기';
+      if (wide()) { $('#tp').classList.add('split'); window.scrollTo({ top:0 }); }
+      else box.scrollIntoView({ behavior:'smooth', block:'start' });
+      if (box.dataset.ok) return;
+      $('#vb').innerHTML = '<div class="spin" id="vp">불러오는 중…</div>';
+      try {
+        const r = await loadPdf(no, (i, n) => { const el = $('#vp'); if (el) el.textContent = `불러오는 중… ${Math.round(i / n * 100)}%`; });
+        $('#vb').innerHTML = `<iframe src="${r.url}#navpanes=0&view=FitH" title="결과보고서"></iframe><div class="tiny muted vnote" style="padding:8px 12px">화면에 보이지 않으면(휴대폰 등) ‘다운로드’ 또는 ‘새 창에서 보기’를 누르세요.</div>`;
+        Object.assign($('#vd'), { href:r.url, download:r.name, hidden:false });
+        Object.assign($('#vo'), { href:r.url, hidden:false });
+        box.dataset.ok = 1;
+      } catch (e) { $('#vb').innerHTML = `<div class="spin">${h(e.message)}</div>`; }
+    };
+    $('#vx').onclick = close;
+    if (viewerOn) $('#rv').click();          // 다른 팀으로 넘어가도 보던 방식 유지
+  }
+  if (lock) return;
+  document.querySelectorAll('.g').forEach(b => b.onclick = () => {
+    form.items[+b.dataset.i] = +b.dataset.v; form.dirty = true; $('#it' + b.dataset.i).classList.remove('miss'); paint();
+  });
+  $('#cmt').oninput = e => { form.comment = e.target.value; form.dirty = true; };
+  // 저장: 빈 문항이 있으면 '작성 중', 8문항 모두면 '평가 완료'. 결과 전송 전까지는 몇 번이든 다시 저장 가능
+  $('#sv').onclick = async () => {
+    const miss = form.items.map((v, i) => v == null ? i : -1).filter(i => i >= 0);
+    $('#sv').disabled = true;
+    try {
+      D = Object.assign(D, await rpc('jd_save', { p_judge:S.no, p_code:S.code, p_team:no, p_items:form.items, p_comment:form.comment, p_submit:false }));
+      form.dirty = false;
+      if (miss.length) {
+        renderTeam(no); miss.forEach(i => $('#it' + i).classList.add('miss'));
+        return toast(`저장했습니다. 선택하지 않은 문항이 ${miss.length}개 있어 ‘작성 중’으로 남습니다.`);
+      }
+      const left = D.teams.filter(x => !isFull(myScore(x.team_no)));
+      const nx = left.find(x => x.team_no > no) || left[0];
+      const total = sum(myScore(no).items);
+      const v = await modal('평가를 저장했습니다', left.length
+        ? `<p class="muted" style="margin:0"><b>${h(t.title)}</b> · 총점 <b>${total}점</b></p>
+           <p style="margin:12px 0 0">아직 평가하지 않은 팀이 <b>${left.length}개</b> 있습니다. 모든 팀을 평가한 뒤 목록 화면에서 <b>결과 전송</b>을 누르기 전까지는 언제든 다시 열어 수정할 수 있습니다.</p>`
+        : `<p class="muted" style="margin:0"><b>${h(t.title)}</b> · 총점 <b>${total}점</b></p>
+           <p style="margin:12px 0 0">모든 팀 평가를 마쳤습니다. 목록 화면에서 점수를 확인한 뒤 <b>결과 전송</b>을 누르세요. 전송하기 전까지는 수정할 수 있고, 전송한 뒤에는 수정할 수 없습니다.</p>`,
+        left.length ? [{ label:'목록으로', value:'home' }, { label:`다음 팀 평가 (${nx.team_no}번)`, value:'next', cls:'pri' }]
+                    : [{ label:'계속 보기', value:null }, { label:'목록에서 결과 전송', value:'home', cls:'pri' }]);
+      if (v === 'next') { form = null; go('#/team/' + nx.team_no); }
+      else if (v === 'home') { form = null; go('#/home'); }
+      else renderTeam(no);
+    } catch (e) { toast(e.message); $('#sv').disabled = false; }
+  };
+}
+
+/* ===== 집계: 최고·최저 제외 평균, 심사위원별 Z 표준화 ===== */
+function trim(vals) {
+  const n = vals.length;
+  if (!n) return { avg:null, drop:[] };
+  if (n < 3) return { avg:mean(vals), drop:[] };
+  let lo = 0, hi = 0;
+  vals.forEach((v, i) => { if (v < vals[lo]) lo = i; if (v > vals[hi]) hi = i; });
+  if (lo === hi) hi = (lo + 1) % n;                       // 모두 같은 점수
+  return { avg:mean(vals.filter((_, i) => i !== lo && i !== hi)), drop:[lo, hi] };
+}
+function compute() {
+  const total = s => sum(s.items);
+  const sub = D.scores.filter(s => s.submitted);
+  const J = {};
+  D.judges.forEach(j => {
+    const v = sub.filter(s => s.judge_no === j.no).map(total), n = v.length, m = mean(v);
+    const sd = n ? Math.sqrt(sum(v.map(x => (x - m) ** 2)) / n) : null;
+    const expect = D.teams.filter(t => !D.recuse.some(r => r.judge_no === j.no && r.team_no === t.team_no)).length;
+    J[j.no] = { n, m, sd, expect };
+  });
+  const rows = D.teams.map(t => {
+    const ent = sub.filter(s => s.team_no === t.team_no).sort((a, b) => a.judge_no - b.judge_no).map(s => {
+      const r = total(s), st = J[s.judge_no], z = st.n >= 2 && st.sd > 0 ? (r - st.m) / st.sd : 0;
+      return { judge:s.judge_no, raw:r, z, items:s.items, comment:s.comment };
+    });
+    const rT = trim(ent.map(e => e.raw)), zT = trim(ent.map(e => e.z));
+    const expect = D.judges.length - D.recuse.filter(r => r.team_no === t.team_no).length;
+    const q3 = mean(ent.map(e => e.items[2]));
+    const exc = (D.excluded || []).find(x => x.team_no === t.team_no) || null;
+    return { team:t, ent, rawAvg:rT.avg, rawDrop:rT.drop, zAvg:zT.avg, zDrop:zT.drop, n:ent.length, expect, q3, exc,
+             ok: rT.avg != null && rT.avg >= CUT && !exc };
+  });
+  // 순위: 시상 가능 팀(원점수 평균 70점 이상, 관리자 제외 아님)만으로 매김
+  // 비교: Z점수 평균 → 원점수 평균 → 문항 3 평균. 부동소수 오차(1e-9 미만)는 같은 값으로 봄
+  const near = (x, y) => Math.abs(x - y) < 1e-9;
+  const cmp = (a, b) => !near(a.zAvg, b.zAvg) ? b.zAvg - a.zAvg : !near(a.rawAvg, b.rawAvg) ? b.rawAvg - a.rawAvg : !near(a.q3, b.q3) ? b.q3 - a.q3 : 0;
+  const ok = rows.filter(r => r.ok).sort(cmp);
+  ok.forEach((r, i) => r.rank = i && !cmp(ok[i - 1], r) ? ok[i - 1].rank : i + 1);
+  // 시상: 대상 = 전체 상위 N팀, 우수상·장려상 = 대상 팀을 뺀 분야별 순위(분야마다 팀 수 설정)
+  const fields = [...new Set(D.teams.map(t => t.field))], cfg = awCfg();
+  ok.slice(0, cfg.grand).forEach(r => r.award = '대상');
+  if (cfg.grand && ok[cfg.grand] && !cmp(ok[cfg.grand - 1], ok[cfg.grand])) ok[cfg.grand - 1].tie = ok[cfg.grand].tie = true;   // 대상 경계 동점
+  for (const fd of fields) {
+    const c = cfg.f(fd), list = ok.filter(r => r.team.field === fd && r.award !== '대상');
+    list.forEach((r, i) => { r.frank = i && !cmp(list[i - 1], r) ? list[i - 1].frank : i + 1;
+      r.award = r.frank <= c.best ? '우수상' : r.frank <= c.best + c.enc ? '장려상' : null; });
+    // 같은 분야에서 동점인데 시상 구분이 갈리거나, 동점으로 수상팀 수가 넘치면 표시
+    list.forEach(r => { r.tie = r.tie || (list.some(o => o !== r && !cmp(o, r)) && (list.some(o => o !== r && !cmp(o, r) && o.award !== r.award)
+      || (!!r.award && list.filter(o => o.award === r.award).length > awN(c, r.award)))); });
+  }
+  const byZ = (a, b) => (b.zAvg ?? -99) - (a.zAvg ?? -99);
+  const rest = [...rows.filter(r => r.exc).sort(byZ), ...rows.filter(r => !r.exc && !r.ok).sort(byZ)];
+  const complete = rows.every(r => r.n >= r.expect);
+  return { J, rows:[...ok, ...rest], ok, fields, complete, nSub:sub.length };
+}
+
+/* ===== 관리자 ===== */
+async function adminDo(action, args = {}) {
+  if (!isAdmin()) return null;                 // 관리자 세션이 아니면 관리자 요청을 보내지 않음
+  try { D = await rpc('jd_admin', { p_code:S.code, p_action:action, p_args:args }); return D; }
+  catch (e) { if (!AUTH_FAIL.test(e.message)) toast(e.message); return null; }
+}
+const jname = no => D.judges.find(j => j.no === no)?.name || '심사위원 ' + no;
+function renderAdmin() {
+  renderTop();
+  const tabs = [['judges','심사위원 관리'],['teams','평가자료 등록'],['progress','진행 현황'],['comments','심사 의견'],['settings','심사 마감'],['result','결과·순위']];
+  if (!tabs.some(t => t[0] === adminTab)) adminTab = 'judges';
+  $('#app').innerHTML = `<div class="wrap">
+    <div class="pagehead"><div><h1>평가점수 관리</h1><div class="muted">${D.closed ? '<span class="badge b-bad">심사 마감</span>' : '<span class="badge b-ok">심사 진행 중</span>'} <span class="tiny">마지막 갱신 ${new Date().toLocaleTimeString('ko-KR')}</span></div></div>
+      <div style="margin-left:auto" class="noprint"><button class="btn sm" id="rf">새로고침</button></div></div>
+    <nav class="tabs">${tabs.map(t => `<button class="tab ${t[0] === adminTab ? 'on' : ''}" data-t="${t[0]}">${t[1]}</button>`).join('')}</nav>
+    <div id="pane"></div><div style="height:40px"></div></div>`;
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => go('#/admin/' + b.dataset.t));
+  $('#rf').onclick = async () => { if (await adminDo('load')) { renderAdmin(); toast('최신 점수를 불러왔습니다.'); } };
+  ({ result:paneResult, progress:paneProgress, comments:paneComments, judges:paneJudges, teams:paneTeams, settings:paneSettings })[adminTab]();
+  // 자동 갱신 타이머는 항상 하나만(다시 그릴 때마다 이전 타이머를 지움). 관리자 로그인이 아니면 즉시 멈춤
+  clearInterval(timer); timer = null;
+  if (adminTab === 'result' || adminTab === 'progress' || adminTab === 'comments') {
+    const id = timer = setInterval(async () => {
+      if (!isAdmin() || timer !== id) return clearInterval(id);
+      if (document.hidden || document.querySelector('.modal')) return;
+      if (await adminDo('load') && isAdmin() && timer === id) renderAdmin();
+    }, 30000);
+  }
+}
+
+const AW_CLS = { '대상':'aw0', '우수상':'aw1', '장려상':'aw2' };
+function statusCell(r) {
+  if (r.exc) return '<span class="badge b-bad">시상 제외</span>';
+  if (r.rawAvg == null) return '<span class="badge b-none">미집계</span>';
+  if (!r.ok) return `<span class="badge b-bad">${CUT}점 미만</span>`;
+  return r.award ? `<span class="badge ${AW_CLS[r.award]}">${r.award}</span>` : '<span class="badge b-none">선정 외</span>';
+}
+// 영역별 평균 득점 막대(전송된 점수의 단순 평균, 100점 길이 기준)
+function areaBar(r) {
+  if (!r.ent.length) return '';
+  const segs = AREAS.map(a => ({ a, v: mean(r.ent.map(e => sum(a.items.map(i => e.items[i])))) }));
+  return `<div class="abar" title="${segs.map(x => `${x.a.name} ${x.v.toFixed(1)}/${x.a.max}`).join(', ')}">${segs.map(x =>
+    `<i style="width:${x.v}%;background:${x.a.c}"></i>`).join('')}</div>`;
+}
+// 위원별 Z점수 분포: 채운 점 = 평균에 들어간 점수, 빈 점 = 최고·최저로 제외, 세로선 = Z점수 평균
+function zPlot(r, lo, hi) {
+  if (!r.ent.length) return '';
+  const W = 132, H = 22, x = z => 6 + (Math.max(lo, Math.min(hi, z)) - lo) / (hi - lo) * (W - 12);
+  const dots = r.ent.map((e, k) => r.zDrop.includes(k)
+    ? `<circle cx="${x(e.z).toFixed(1)}" cy="11" r="3.6" fill="#fff" stroke="#8D9896" stroke-width="1.3"><title>${h(jname(e.judge))} ${e.z.toFixed(3)} (제외)</title></circle>`
+    : `<circle cx="${x(e.z).toFixed(1)}" cy="11" r="3.6" fill="#2C5A50" fill-opacity=".8"><title>${h(jname(e.judge))} ${e.z.toFixed(3)}</title></circle>`).join('');
+  return `<svg class="zplot" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-label="위원별 Z점수 분포">
+    <line x1="6" x2="${W - 6}" y1="11" y2="11" stroke="#CBD3D0"/><line x1="${x(0).toFixed(1)}" x2="${x(0).toFixed(1)}" y1="5" y2="17" stroke="#CBD3D0"/>
+    ${r.zAvg == null ? '' : `<line x1="${x(r.zAvg).toFixed(1)}" x2="${x(r.zAvg).toFixed(1)}" y1="2" y2="20" stroke="#1E2B2A" stroke-width="2"/>`}${dots}</svg>`;
+}
+// 위원별 Z 분포 읽는 법(기호 + 해석)
+function zLegend(lo, hi) {
+  const ic = body => `<svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true">${body}</svg>`;
+  const area = AREAS.map(a => `<span><i style="background:${a.c}"></i>${a.name}</span>`).join('');
+  return `<div class="zlegend">
+    <div class="zl-col">
+      <b>위원별 Z 분포 읽는 법</b>
+      <div class="zl-keys">
+        <span>${ic('<circle cx="11" cy="7" r="3.6" fill="#2C5A50" fill-opacity=".8"/>')}평균에 들어간 위원 점수</span>
+        <span>${ic('<circle cx="11" cy="7" r="3.6" fill="#fff" stroke="#8D9896" stroke-width="1.3"/>')}최고·최저로 제외된 점수</span>
+        <span>${ic('<line x1="11" x2="11" y1="0" y2="14" stroke="#1E2B2A" stroke-width="2"/>')}Z점수 평균(순위 기준)</span>
+        <span>${ic('<line x1="2" x2="20" y1="7" y2="7" stroke="#CBD3D0"/><line x1="11" x2="11" y1="2" y2="12" stroke="#CBD3D0"/>')}가운데 눈금 = 0(각 위원의 평소 수준)</span>
+      </div>
+      <ul>
+        <li>점이 <b>오른쪽</b>에 있을수록 그 위원이 자기 평소 점수보다 높게, <b>왼쪽</b>일수록 낮게 평가했다는 뜻입니다.</li>
+        <li>점들이 <b>한곳에 모여 있으면</b> 위원들의 판단이 일치한 것이고, <b>넓게 퍼져 있으면</b> 의견이 갈린 사례입니다. 퍼진 사례는 위원별 상세(행 클릭)와 심사 의견을 함께 확인하세요.</li>
+        <li>빈 점이 다른 점들과 멀리 떨어져 있다면, 한 위원의 치우친 평가가 최고·최저 제외로 걸러졌다는 뜻입니다.</li>
+        <li>가로축은 모든 사례에서 같은 범위(Z ${lo.toFixed(1)} ~ +${hi.toFixed(1)})이므로 사례끼리 위치를 바로 비교할 수 있습니다.</li>
+      </ul>
+    </div>
+    <div class="zl-col zl-area"><b>사례명 아래 막대</b><p>위원들이 준 영역별 평균 점수입니다. 막대 전체 길이가 원점수(100점 기준)이고, 색은 심사항목입니다.</p><div class="zl-areas">${area}</div></div>
+  </div>`;
+}
+function awardSummary(C) {
+  const cfg = awCfg(), grand = C.ok.filter(r => r.award === '대상');
+  const pick = (fd, name) => C.ok.filter(r => r.team.field === fd && r.award === name);
+  const gap = (have, want) => have < want ? ` <span class="badge b-warn">${want - have}팀 부족</span>` : have > want ? ` <span class="badge b-warn">${have - want}팀 초과(동점)</span>` : '';
+  const tiers = AW_NAMES.map(name => ({ name, fs: C.fields.filter(fd => awN(cfg.f(fd), name) > 0) })).filter(x => x.fs.length);
+  const none = !cfg.grand && !tiers.length;
+  // 표 한 줄 = 수상팀 한 팀. 구분은 상 단위로, 분야·규모는 분야 단위로 칸을 합침
+  const groups = [];
+  if (cfg.grand) groups.push({ name:'대상', parts:[{ fd:'전체', want:cfg.grand, rs:grand }] });
+  tiers.forEach(tr => groups.push({ name:tr.name, parts:tr.fs.map(fd => ({ fd, want:awN(cfg.f(fd), tr.name), rs:pick(fd, tr.name) })) }));
+  const team = r => `<td class="l"><b>${h(r.team.title)}</b>${r.tie ? ' <span class="badge b-warn">동점</span>' : ''}</td>
+    <td class="tiny">${h(r.team.members)}</td><td class="n">${f(r.rawAvg)}</td><td class="n"><b>${f(r.zAvg, 3)}</b></td>`;
+  const body = groups.map(g => {
+    const span = sum(g.parts.map(pt => Math.max(1, pt.rs.length)));
+    return g.parts.map((pt, pi) => (pt.rs.length ? pt.rs : [null]).map((r, ri) => `<tr>
+      ${pi === 0 && ri === 0 ? `<td rowspan="${span}"><span class="badge ${AW_CLS[g.name]}">${g.name}</span></td>` : ''}
+      ${ri === 0 ? `<td rowspan="${Math.max(1, pt.rs.length)}">${h(pt.fd)}</td><td rowspan="${Math.max(1, pt.rs.length)}">${pt.want}팀${gap(pt.rs.length, pt.want)}</td>` : ''}
+      ${r ? team(r) : '<td class="l"><span class="muted">해당 팀 없음</span></td><td></td><td></td><td></td>'}</tr>`).join('')).join('');
+  }).join('');
+  return `<div class="card pad awards">
+    <div class="aw-head"><h3>시상 결과 ${C.complete ? '' : '<span class="badge b-warn">잠정</span>'}</h3><span class="muted tiny">대상은 전체 순위, 우수상·장려상은 대상 팀을 뺀 분야별 순위</span><span style="flex:1"></span><button class="btn sm noprint" id="aws">시상 규모 설정</button></div>
+    ${none ? '<div class="muted">시상 규모가 모두 0팀으로 설정되어 있습니다(시상 없음). ‘시상 규모 설정’에서 바꿀 수 있습니다.</div>' : `
+    <div class="tbl-wrap"><table class="t aw-t"><thead><tr><th>구분</th><th>분야</th><th>규모</th><th>수상팀</th><th>참가자</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th></tr></thead><tbody>
+      ${body}
+    </tbody></table></div>`}
+    ${C.ok.some(r => r.tie && r.award) ? '<div class="tiny" style="color:var(--warn);margin-top:8px">시상 경계에 동점(Z점수·원점수·문항 3 평균이 모두 같음)이 있습니다. 심사위원회에서 확인하세요.</div>' : ''}
+  </div>`;
+}
+function paneResult() {
+  const allZ = compute().rows.flatMap(r => r.ent.map(e => e.z));
+  const zLo = Math.min(-2, ...allZ), zHi = Math.max(2, ...allZ);
+  const C = compute(), elig = C.ok.length, excN = C.rows.filter(r => r.exc).length;
+  const done = C.rows.filter(r => r.n >= r.expect).length;
+  $('#pane').innerHTML = `
+    <div class="kpis">
+      <div class="card kpi"><b>${C.nSub}</b><span class="muted tiny">전송된 평가표 (전체 ${sum(C.rows.map(r => r.expect))})</span></div>
+      <div class="card kpi"><b>${done} / ${C.rows.length}</b><span class="muted tiny">평가 완료 사례</span></div>
+      <div class="card kpi"><b>${elig}</b><span class="muted tiny">시상 가능 (원점수 평균 ${CUT}점 이상${excN ? ` · 관리자 제외 ${excN}` : ''})</span></div>
+      <div class="card kpi"><b>${C.complete ? '확정 가능' : '잠정'}</b><span class="muted tiny">${C.complete ? '모든 위원이 결과를 전송함' : '전송하지 않은 위원이 있어 Z점수가 바뀔 수 있음'}</span></div>
+    </div>
+    ${printHead(C)}
+    ${awardSummary(C)}
+    <div class="toolbar" style="margin-top:16px"><span class="muted tiny">순위 = Z점수(최고·최저 제외 평균) 내림차순 · 동점이면 원점수 평균, 문항 3 평균 순 · 행을 누르면 위원별 상세 · ‘제외’로 시상에서 뺄 수 있음</span><span class="sp"></span>
+      <label class="tiny muted" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="pdet"> 위원별 상세 포함</label><button class="btn sm pri" id="pr">PDF 저장</button><button class="btn sm" id="cx">CSV 내보내기</button></div>
+    ${zLegend(zLo, zHi)}
+    <h2 class="printonly ptitle">전체 순위</h2>
+    <div class="tbl-wrap rank-tbl"><table class="t">
+      <thead><tr><th class="c">전체<br>순위</th><th class="c">분야<br>순위</th><th>번호</th><th>사례명</th><th>참가자</th><th class="c">전송</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th><th class="c">위원별 Z 분포</th><th class="c">시상</th><th class="c noprint">관리</th></tr></thead>
+      <tbody>${C.rows.map(r => `
+        <tr class="${r.ok ? '' : 'out'}" data-t="${r.team.team_no}" style="cursor:pointer">
+          <td class="c">${r.ok ? `<span class="rank ${r.rank <= 3 ? 'r' + r.rank : ''}">${r.rank}</span>` : '–'}</td>
+          <td class="c">${r.frank ?? (r.award === '대상' ? '<span class="tiny muted">대상</span>' : '–')}</td>
+          <td>${r.team.team_no}</td>
+          <td class="l"><b>${h(r.team.title)}</b><div class="tiny muted">${h(r.team.field)} · ${h(r.team.theme)}</div>${areaBar(r)}
+            ${r.exc ? `<div class="tiny" style="color:var(--bad)">제외 사유: ${h(r.exc.reason)}</div>` : ''}</td>
+          <td class="tiny">${h(r.team.members)}</td>
+          <td class="c"><span class="badge ${r.n >= r.expect ? 'b-ok' : 'b-warn'}">${r.n}/${r.expect}</span></td>
+          <td class="n">${f(r.rawAvg)}</td>
+          <td class="n"><b>${f(r.zAvg, 3)}</b></td>
+          <td class="c">${zPlot(r, zLo, zHi)}</td>
+          <td class="c">${statusCell(r)}</td>
+          <td class="c noprint"><button class="btn sm ${r.exc ? '' : 'danger'} ex" data-t="${r.team.team_no}">${r.exc ? '제외 해제' : '제외'}</button></td>
+        </tr>
+        ${openDet.has(r.team.team_no) ? `<tr class="det"><td colspan="11">${detail(r, C)}</td></tr>` : ''}`).join('')}</tbody>
+    </table></div>
+    <div class="card pad formula" style="margin-top:16px">
+      <h3 style="font-size:15px;margin-bottom:8px">산정 방법</h3>
+      <ol class="steps" style="margin-top:4px">
+        <li><b>원점수</b>위원별로 8개 문항 등급 점수를 더한 값(100점 만점)입니다.</li>
+        <li><b>위원별 Z 표준화</b>위원마다 자신이 전송한 전체 사례 원점수의 평균·표준편차(모표준편차)로 점수를 바꿉니다. 후하게·짜게 주는 위원의 차이가 보정됩니다.
+          <div class="fx">Z점수 = (원점수 − 그 위원의 평균) ÷ 그 위원의 표준편차</div>
+          <span class="muted tiny">0은 그 위원의 평균, +1은 평균보다 표준편차 1만큼 높은 평가입니다. 한 위원이 모든 사례에 같은 점수를 주면 그 위원의 Z점수는 모두 0입니다.</span></li>
+        <li><b>최고·최저 제외 평균</b>사례별로 위원들의 Z점수 중 최고와 최저를 1개씩 빼고 나머지를 평균합니다(같은 값이 여럿이면 1개만 제외, 평가 위원이 3명 미만이면 단순 평균). 이 <b>Z점수 평균</b>으로 순위를 정합니다.</li>
+        <li><b>시상 대상 거르기</b>원점수도 따로 최고·최저 1개씩을 뺀 평균을 내어 <b>${CUT}점 미만</b>이면 자동으로 제외하고, 그 뒤 관리자가 사유를 기록해 추가로 제외합니다. 제외된 사례도 점수는 남으며 위원별 평균·표준편차 계산에는 그대로 포함되므로, 제외해도 다른 사례의 Z점수는 바뀌지 않습니다.</li>
+        <li><b>동점 처리</b>Z점수 평균(반올림 전 값)이 같으면 원점수 평균, 그다음 문항 3(문제 해결 및 목적 달성도) 평균이 높은 사례가 앞섭니다. 모두 같으면 ‘동점’으로 표시하고 심사위원회가 결정합니다.</li>
+        <li><b>시상</b>대상은 분야 구분 없이 전체 상위 ${awCfg().grand}팀, 우수상·장려상은 대상 수상팀을 뺀 분야별 순위로 정합니다(${C.fields.map(fd => `${h(fd)} 우수상 ${awCfg().f(fd).best}팀·장려상 ${awCfg().f(fd).enc}팀`).join(', ')}).</li>
+        <li><b>집계 대상</b>위원이 ‘결과 전송’한 점수만 반영합니다. 전송하지 않은 위원이 있으면 결과는 ‘잠정’으로 표시됩니다.</li>
+      </ol>
+      <div class="printonly" style="margin-top:10px">${zLegend(zLo, zHi)}</div>
+    </div>`;
+  document.querySelectorAll('tr[data-t]').forEach(tr => tr.onclick = () => {
+    const n = +tr.dataset.t; openDet.has(n) ? openDet.delete(n) : openDet.add(n); paneResult();
+  });
+  document.querySelectorAll('.ex').forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    const t = +b.dataset.t, team = D.teams.find(x => x.team_no === t), cur = (D.excluded || []).find(x => x.team_no === t);
+    if (cur) {
+      if (!await confirmBox('시상 제외 해제', `<b>${h(team.title)}</b>을(를) 다시 순위·시상 산정에 넣습니다.<br>제외 사유: ${h(cur.reason)}`, '해제')) return;
+      return setExclude(t, false, '');
+    }
+    let reason = '';
+    const p = modal('시상 제외', `<p class="muted" style="margin:0 0 10px"><b>${t}. ${h(team.title)}</b><br>점수와 관계없이 시상에서 빼고, 나머지 팀으로 순위를 다시 매깁니다.</p>
+      <label class="field" style="margin-top:0"><span>제외 사유 (필수)</span><textarea class="inp" id="exr" maxlength="500" placeholder="예: 기존 상용 서비스와 동일한 결과물로 확인됨"></textarea></label>`,
+      [{ label:'취소', value:false }, { label:'제외', value:true, cls:'danger' }]);
+    const ta = $('#exr'); ta.oninput = () => reason = ta.value; ta.focus();
+    if (!await p) return;
+    if (!reason.trim()) return toast('제외 사유를 입력해야 제외할 수 있습니다.');
+    setExclude(t, true, reason);
+  });
+  $('#aws').onclick = editAwards;
+  $('#pr').onclick = () => printResult($('#pdet').checked);
+  $('#cx').onclick = () => exportCSV(C);
+}
+// 결과·순위를 A4 가로로 인쇄 → 인쇄 창에서 'PDF로 저장'. 파일 이름은 문서 제목을 따름
+function printHead(C) {
+  return `<div class="printonly phead">
+      <h1>2026년 AX 교육·행정혁신 우수사례 육성 프로그램 심사 결과</h1>
+      <div>출력 일시 ${new Date().toLocaleString('ko-KR')}, 상태 <b>${C.complete ? '확정(모든 위원 전송)' : '잠정(미전송 위원 있음)'}</b>, 전송된 평가표 ${C.nSub} / ${sum(C.rows.map(r => r.expect))}</div>
+      <div>심사위원: ${D.judges.map(j => h(j.name)).join(', ')}</div>
+    </div>`;
+}
+// 위원별 상세 포함 인쇄용 문서: 1쪽 = 시상 결과, 2쪽부터 사례마다 1쪽(사례 요약 + 위원별 점수)
+function printDoc(C) {
+  const award = r => r.exc ? '시상 제외' : r.rawAvg == null ? '미집계' : !r.ok ? CUT + '점 미만' : (r.award || '선정 외');
+  const pages = C.rows.map((r, i) => `<section class="ppage">
+      <div class="pcase-top">2026 AX 우수사례 심사 결과, 사례별 상세 ${i + 1} / ${C.rows.length}</div>
+      <h2 class="pcase-title">${r.team.team_no}. ${h(r.team.title)}</h2>
+      <table class="t pcase-sum"><thead><tr><th>전체 순위</th><th>분야 순위</th><th>분야</th><th>지원주제</th><th>참가자</th><th>전송</th><th>원점수 평균</th><th>Z점수 평균</th><th>시상</th></tr></thead>
+        <tbody><tr><td>${r.ok ? r.rank : '–'}</td><td>${r.frank ?? (r.award === '대상' ? '대상' : '–')}</td><td>${h(r.team.field)}</td><td>${h(r.team.theme)}</td>
+          <td>${h(r.team.members)}</td><td>${r.n}/${r.expect}</td><td>${f(r.rawAvg)}</td><td><b>${f(r.zAvg, 3)}</b></td><td><b>${award(r)}</b></td></tr>
+        ${r.exc ? `<tr><td colspan="9" class="l">제외 사유: ${h(r.exc.reason)}</td></tr>` : ''}</tbody></table>
+      <div class="pcase-det">${detail(r, C)}</div>
+    </section>`).join('');
+  return `<section class="ppage">${printHead(C)}${awardSummary(C)}</section>${pages}`;
+}
+function printResult(withDet) {
+  const title = document.title, C = compute();
+  document.title = `AX우수사례_심사결과${withDet ? '_사례별상세' : ''}_${stamp()}${C.complete ? '' : '_잠정'}`;
+  let doc = null;
+  if (withDet) {
+    doc = document.createElement('div'); doc.id = 'printdoc'; doc.innerHTML = printDoc(C);
+    document.body.appendChild(doc); document.body.classList.add('print-det');
+  }
+  const done = () => {
+    window.removeEventListener('afterprint', done);
+    document.title = title;
+    if (doc) { doc.remove(); document.body.classList.remove('print-det'); }
+  };
+  window.addEventListener('afterprint', done);
+  toast('인쇄 창의 ‘대상(프린터)’에서 ‘PDF로 저장’을 고르세요.');
+  setTimeout(() => window.print(), 100);
+}
+async function editAwards() {
+  const cfg = awCfg(), fields = [...new Set(D.teams.map(t => t.field))];
+  const num = (id, v) => `<input class="inp" type="number" min="0" max="12" step="1" id="${id}" value="${v}" style="width:80px;padding:6px 8px">`;
+  const p = modal('시상 규모 설정', `<p class="muted" style="margin:0 0 12px">팀 수를 0으로 두면 그 상은 주지 않습니다. 저장하면 결과·순위의 시상이 바로 다시 매겨집니다.</p>
+    <table class="t"><tbody>
+      <tr><td><span class="badge aw0">대상</span> 전체</td><td class="n">${num('aw_g', cfg.grand)} 팀</td></tr>
+      ${fields.map((fd, i) => `<tr><td><span class="badge aw1">우수상</span> ${h(fd)}</td><td class="n">${num('aw_b' + i, cfg.f(fd).best)} 팀</td></tr>
+        <tr><td><span class="badge aw2">장려상</span> ${h(fd)}</td><td class="n">${num('aw_e' + i, cfg.f(fd).enc)} 팀</td></tr>`).join('')}
+    </tbody></table>`, [{ label:'취소', value:false }, { label:'저장', value:true, cls:'pri' }]);
+  const vals = {};
+  document.querySelectorAll('.modal input[type=number]').forEach(i => { vals[i.id] = i.value; i.oninput = () => vals[i.id] = i.value; });
+  if (!await p) return;
+  const n = v => String(v).trim() !== '' && Number.isInteger(+v) && +v >= 0 && +v <= 12 ? +v : NaN;
+  const body = { grand:n(vals.aw_g), fields:{} };
+  fields.forEach((fd, i) => body.fields[fd] = { best:n(vals['aw_b' + i]), enc:n(vals['aw_e' + i]) });
+  if ([body.grand, ...Object.values(body.fields).flatMap(x => [x.best, x.enc])].some(Number.isNaN)) return toast('팀 수는 0~12 사이의 정수로 입력하세요.');
+  try { await rpc('jd_set_awards', { p_code:S.code, p_awards:body }); await adminDo('load'); renderAdmin(); toast('시상 규모를 저장하고 시상을 다시 매겼습니다.'); }
+  catch (e) { toast(e.message); }
+}
+async function setExclude(team, on, reason) {
+  try { await rpc('jd_exclude', { p_code:S.code, p_team:team, p_on:on, p_reason:reason }); await adminDo('load'); renderAdmin(); toast(on ? '시상에서 제외하고 순위를 다시 매겼습니다.' : '제외를 해제했습니다.'); }
+  catch (e) { toast(e.message); }
+}
+function detail(r, C) {
+  if (!r.ent.length) return '<span class="muted">제출된 평가가 없습니다.</span>';
+  const itemAvg = CRIT.map((_, i) => mean(r.ent.map(e => e.items[i])));
+  return `<div style="overflow-x:auto"><table class="t" style="background:#fff">
+    <thead><tr><th>심사위원</th>${CRIT.map((c, i) => `<th class="n" title="${c.name}">문항${i + 1}<br><span style="font-weight:500">${c.max}</span></th>`).join('')}<th class="n">원점수</th><th class="n">위원 평균·표준편차</th><th class="n">Z점수</th></tr></thead>
+    <tbody>${r.ent.map((e, k) => { const st = C.J[e.judge];
+      const rs = r.rawDrop.includes(k), zs = r.zDrop.includes(k);
+      return `<tr><td>${h(jname(e.judge))}</td>
+        ${e.items.map(v => `<td class="n">${v}</td>`).join('')}
+        <td class="n">${rs ? `<s class="drop" title="최고·최저 제외">${e.raw}</s>` : `<b>${e.raw}</b>`}</td>
+        <td class="n tiny">${f(st.m, 1)} · ${f(st.sd, 1)}${st.n < st.expect ? ` <span class="badge b-warn">${st.n}/${st.expect}</span>` : ''}</td>
+        <td class="n">${zs ? `<s class="drop" title="최고·최저 제외">${f(e.z, 3)}</s>` : `<b>${f(e.z, 3)}</b>`}</td></tr>`; }).join('')}
+      <tr><td class="muted">문항 평균</td>${itemAvg.map(v => `<td class="n muted">${f(v, 1)}</td>`).join('')}<td class="n"><b>${f(r.rawAvg)}</b></td><td></td><td class="n"><b>${f(r.zAvg, 3)}</b></td></tr>
+    </tbody></table></div><div class="tiny muted" style="margin-top:6px">취소선은 최고·최저로 제외된 점수입니다. 마지막 줄의 원점수·Z점수는 제외 후 평균입니다.</div>`;
+}
+
+// 진행 현황 머리글은 '성명(직책)'에서 성명만 표시
+const jhead = name => h(String(name).replace(/\s*\(.+\)$/, ''));
+function paneProgress() {
+  const C = compute(), row = t => C.rows.find(r => r.team.team_no === t);
+  const zf = z => (z > 0 ? '+' : '') + z.toFixed(3);
+  const cell = (j, t) => {
+    if (D.recuse.some(r => r.judge_no === j && r.team_no === t)) return '<span class="badge b-none">회피</span>';
+    const s = D.scores.find(x => x.judge_no === j && x.team_no === t);
+    if (!s) return '<span class="muted">·</span>';
+    if (!s.submitted) return isFull(s) ? `<span class="badge b-navy">완료 ${sum(s.items)}</span>` : `<span class="badge b-warn">작성 중 ${sum(s.items)}</span>`;
+    const r = row(t), k = r.ent.findIndex(e => e.judge === j), e = r.ent[k];
+    const raw = r.rawDrop.includes(k) ? `<s class="drop">${e.raw}</s>` : e.raw;
+    const z = r.zDrop.includes(k) ? `<s class="drop">${zf(e.z)}</s>` : zf(e.z);
+    return `<span class="badge b-ok">${raw}</span><div class="tiny muted" style="margin-top:3px">Z ${z}</div>`;
+  };
+  $('#pane').innerHTML = `
+    <div class="toolbar"><span class="muted tiny">작성 중 → 완료(전송 전, 위원이 수정 가능) → 전송된 칸은 원점수와 Z점수를 표시합니다(취소선 = 최고·최저로 제외). 전송된 점수만 결과·순위에 반영됩니다. 칸을 누르면 점수 삭제·회피 지정을 할 수 있습니다. 30초마다 자동 갱신됩니다.</span></div>
+    <div class="tbl-wrap"><table class="t mx compact">
+      <thead><tr><th>평가팀</th>${D.judges.map(j => `<th class="c" title="${h(j.name)}">${jhead(j.name)}</th>`).join('')}<th class="c">전송</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th></tr></thead>
+      <tbody>${D.teams.map(t => { const r = row(t.team_no);
+        return `<tr><td class="tm l" title="${h(t.title)}"><b>${t.team_no}.</b> ${h(t.title)}</td>${D.judges.map(j => `<td class="cell" data-j="${j.no}" data-t="${t.team_no}">${cell(j.no, t.team_no)}</td>`).join('')}
+          <td class="c"><span class="badge ${r.n >= r.expect ? 'b-ok' : 'b-warn'}">${r.n}/${r.expect}</span></td>
+          <td class="n">${f(r.rawAvg)}</td><td class="n"><b>${r.zAvg == null ? '–' : zf(r.zAvg)}</b></td></tr>`; }).join('')}
+      <tr><td class="muted l">위원별 평가 완료</td>${D.judges.map(j => { const st = C.J[j.no];
+        const full = D.scores.filter(s => s.judge_no === j.no && isFull(s)).length;
+        return `<td class="c"><span class="badge ${full >= st.expect ? 'b-navy' : 'b-warn'}">${full}/${st.expect}</span></td>`; }).join('')}<td></td><td></td><td></td></tr>
+      <tr><td class="muted l">결과 전송</td>${D.judges.map(j => sentAt(j.no)
+        ? `<td class="c"><span class="badge b-ok" title="${new Date(sentAt(j.no)).toLocaleString('ko-KR')}">전송됨</span><div style="margin-top:4px"><button class="btn sm us" data-j="${j.no}">전송 취소</button></div></td>`
+        : '<td class="c"><span class="badge b-none">미전송</span></td>').join('')}<td></td><td></td><td></td></tr>
+      <tr><td class="muted l">위원 평균 · 표준편차</td>${D.judges.map(j => { const st = C.J[j.no];
+        return `<td class="c tiny muted">${st.n ? f(st.m, 1) + ' · ' + f(st.sd, 1) : '–'}</td>`; }).join('')}<td></td><td></td><td></td></tr>
+      </tbody></table></div>`;
+  document.querySelectorAll('td.cell').forEach(td => td.onclick = async () => {
+    const j = +td.dataset.j, t = +td.dataset.t;
+    const s = D.scores.find(x => x.judge_no === j && x.team_no === t), rec = D.recuse.some(r => r.judge_no === j && r.team_no === t);
+    const team = D.teams.find(x => x.team_no === t);
+    const acts = [{ label:'닫기', value:null }];
+    if (s) acts.push({ label:'점수 삭제', value:'delete_score', cls:'danger' });
+    acts.push(rec ? { label:'회피 해제', value:'unrecuse' } : { label:'회피 지정', value:'recuse' });
+    const st = rec ? '회피 지정됨' : !s ? '미평가' : s.submitted ? `전송됨 · ${sum(s.items)}점` : isFull(s) ? `평가 완료(전송 전) · ${sum(s.items)}점` : `작성 중 · ${sum(s.items)}점`;
+    const v = await modal(`${jname(j)} · ${t}번`, `<p class="muted" style="margin:0 0 6px">${h(team.title)}</p><p style="margin:0">상태: <b>${st}</b></p>
+      <p class="tiny muted">회피 지정: 이 위원에게 해당 사례가 보이지 않고 점수는 삭제되며 집계에서 빠집니다. 전송된 점수를 고치게 하려면 아래 ‘결과 전송’ 줄 또는 심사위원 관리에서 <b>전송 취소</b>를 누르세요.</p>`, acts);
+    if (!v) return;
+    if ((v === 'delete_score' || v === 'recuse') && s && !await confirmBox('확인', `${h(jname(j))}의 ${t}번 사례 점수가 삭제됩니다. 계속할까요?`, '삭제', 'danger')) return;
+    const ok = v === 'recuse' || v === 'unrecuse' ? await adminDo('recuse', { judge_no:j, team_no:t, on: v === 'recuse' }) : await adminDo(v, { judge_no:j, team_no:t });
+    if (ok) { renderAdmin(); toast('반영했습니다.'); }
+  });
+  bindUnsend();
+}
+// 전송 취소: 그 위원의 모든 점수를 다시 수정 가능하게(결과·순위에서는 다시 전송할 때까지 빠짐)
+function bindUnsend() {
+  document.querySelectorAll('.us').forEach(b => b.onclick = async () => {
+    const j = +b.dataset.j;
+    if (!await confirmBox('전송 취소', `<b>${h(jname(j))}</b>의 결과 전송을 취소합니다. 위원이 점수를 다시 고칠 수 있고, 다시 전송할 때까지 이 위원의 점수는 결과·순위에서 빠집니다.`, '전송 취소', 'danger')) return;
+    try { await rpc('jd_unsend', { p_code:S.code, p_judge:j }); await adminDo('load'); renderAdmin(); toast('전송을 취소했습니다. 위원이 다시 수정할 수 있습니다.'); }
+    catch (e) { toast(e.message); }
+  });
+}
+
+function paneJudges() {
+  $('#pane').innerHTML = `
+    <div class="note">심사위원 성명(직책)을 입력하고 접속코드를 발급해 각 위원에게 전달하세요. 입력한 성명(직책)은 로그인 화면의 구분 목록에 그대로 표시됩니다(예: 홍길동(기획처장)). 발급한 코드는 ‘코드 보기’로 다시 확인할 수 있고, 재발급하면 이전 코드는 쓸 수 없습니다. 결과를 전송한 위원이 점수를 고쳐야 하면 ‘전송 취소’를 누르세요.</div>
+    <div class="tbl-wrap"><table class="t">
+      <thead><tr><th>구분</th><th>성명(직책)</th><th class="c">접속코드</th><th class="c">평가 완료</th><th class="c">결과 전송</th><th></th></tr></thead>
+      <tbody>${D.judges.map(j => { const exp = D.teams.length - D.recuse.filter(r => r.judge_no === j.no).length;
+        const full = D.scores.filter(s => s.judge_no === j.no && isFull(s)).length, sa = sentAt(j.no);
+        return `<tr><td>심사위원 ${j.no}</td>
+          <td><input class="inp jn" data-j="${j.no}" value="${h(j.name)}" maxlength="40" placeholder="성명(직책)" style="max-width:280px"></td>
+          <td class="c">${j.has_code ? '<span class="badge b-ok">발급됨</span>' : '<span class="badge b-none">미발급</span>'}</td>
+          <td class="c">${full}/${exp}</td>
+          <td class="c">${sa ? `<span class="badge b-ok">전송됨</span><div class="tiny muted">${new Date(sa).toLocaleString('ko-KR')}</div>` : '<span class="badge b-none">미전송</span>'}</td>
+          <td class="n"><button class="btn sm js" data-j="${j.no}">저장</button>
+            ${j.has_code ? `<button class="btn sm jv" data-j="${j.no}">코드 보기</button>` : ''}
+            <button class="btn sm ${j.has_code ? '' : 'pri'} jc" data-j="${j.no}">${j.has_code ? '재발급' : '코드 발급'}</button>
+            ${j.has_code ? `<button class="btn sm jm" data-j="${j.no}">안내 문구</button>` : ''}
+            ${sa ? `<button class="btn sm danger us" data-j="${j.no}">전송 취소</button>` : ''}</td></tr>`; }).join('')}
+      </tbody></table></div>`;
+  const showCode = async (j, code) => {
+    const v = await modal(`${jname(j)} 접속코드`, `<div class="code">${h(code)}</div><p class="tiny muted">로그인 화면의 구분에서 ‘${h(jname(j))}’을 고르고 이 코드를 입력합니다.</p>`,
+      [{ label:'복사', value:'copy' }, { label:'닫기', value:null, cls:'pri' }]);
+    if (v === 'copy') { try { await navigator.clipboard.writeText(code); toast('복사했습니다.'); } catch { toast('복사하지 못했습니다. 직접 적어 두세요.'); } }
+  };
+  document.querySelectorAll('.js').forEach(b => b.onclick = async () => {
+    const name = document.querySelector(`.jn[data-j="${b.dataset.j}"]`).value.trim();
+    if (!name) return toast('성명(직책)을 입력하세요.');
+    if (await adminDo('set_judge', { judge_no:+b.dataset.j, name })) { renderAdmin(); toast('저장했습니다.'); }
+  });
+  document.querySelectorAll('.jv').forEach(b => b.onclick = async () => {
+    const j = +b.dataset.j;
+    try {
+      const r = await rpc('jd_view_code', { p_code:S.code, p_judge:j });
+      if (r.code) return showCode(j, r.code);
+      modal('코드를 볼 수 없습니다', `<p class="muted" style="margin:0">${h(jname(j))}의 코드는 ‘코드 보기’ 기능이 생기기 전에 발급되어 확인할 수 없습니다. 재발급하면 이후에는 볼 수 있지만, 위원이 쓰던 이전 코드는 더 이상 쓸 수 없으니 새 코드를 다시 전달해야 합니다.</p>`, [{ label:'닫기', value:null, cls:'pri' }]);
+    } catch (e) { toast(e.message); }
+  });
+  document.querySelectorAll('.jc').forEach(b => b.onclick = async () => {
+    const j = +b.dataset.j, had = D.judges.find(x => x.no === j).has_code;
+    if (had && !await confirmBox('접속코드 재발급', `${h(jname(j))}의 기존 코드는 더 이상 쓸 수 없게 됩니다. 재발급할까요?`, '재발급')) return;
+    try {
+      const r = await rpc('jd_issue_code', { p_code:S.code, p_judge:j });
+      await adminDo('load'); renderAdmin(); showCode(j, r.code);
+    } catch (e) { toast(e.message); }
+  });
+  document.querySelectorAll('.jm').forEach(b => b.onclick = async () => {
+    const j = +b.dataset.j;
+    let code = null;
+    try { code = (await rpc('jd_view_code', { p_code:S.code, p_judge:j })).code; } catch (e) { return toast(e.message); }
+    const text = guideText(j, code);
+    const p = modal(`${jname(j)} 접속 안내`, `${code ? '' : '<p class="err" style="margin:0 0 8px">이 위원의 코드는 확인할 수 없어 접속코드 자리를 비워 두었습니다. 재발급한 뒤 다시 만들어 주세요.</p>'}
+      <textarea class="inp guide-text" id="gtx" readonly>${h(text)}</textarea>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><p class="tiny muted" style="margin:0;flex:1">문자·메신저·메일에 붙여넣어 보내세요. 접속코드가 들어 있으니 본인에게만 보내야 합니다.</p>
+        <button type="button" class="btn pri" id="gcp">복사</button></div>`,
+      [{ label:'닫기', value:null }]);
+    // 누르는 즉시 복사(브라우저가 사용자 동작 안에서만 클립보드 쓰기를 허용). 막히면 글을 선택해 복사
+    $('#gcp').onclick = async () => {
+      const ta = $('#gtx');
+      try { await navigator.clipboard.writeText(text); }
+      catch { ta.focus(); ta.select(); if (!document.execCommand('copy')) return toast('복사하지 못했습니다. 글을 직접 선택해 복사하세요.'); }
+      $('#gcp').textContent = '복사됨'; toast('안내 문구를 복사했습니다.');
+    };
+    await p;
+  });
+  bindUnsend();
+}
+// 심사위원에게 보내는 접속 안내문
+function guideText(j, code) {
+  const full = jname(j), m = full.match(/^(.*?)\s*\((.+)\)$/);
+  const who = m ? `${m[1]} ${m[2]}님` : `${full} 위원님`;
+  const n = D.teams.length - D.recuse.filter(r => r.judge_no === j).length;
+  return `[2026 AX 교육·행정혁신 우수사례 육성 프로그램] 온라인 심사 안내
+
+${who}, 안녕하십니까.
+2026 AX 교육·행정혁신 우수사례 심사위원을 맡아 주셔서 감사합니다. 아래와 같이 온라인 심사를 안내드립니다.
+
+■ 심사기간: ${PERIOD}
+■ 접속 주소: ${SITE_URL}
+■ 로그인: 구분에서 '${full}' 선택 후 접속코드 입력
+■ 접속코드: ${code || '(재발급 후 입력)'}
+  ※ 위원님 전용 코드이므로 다른 분과 공유하지 마십시오.
+
+■ 심사 방법
+ 1. 평가팀 목록에서 사례를 눌러 결과보고서(PDF), 시제품 실행링크, 시연 영상을 확인합니다.
+ 2. 8개 평가요소마다 S~E 등급을 고른 뒤 '저장'합니다. 저장한 평가는 결과 전송 전까지 언제든 고칠 수 있습니다.
+ 3. ${n}개 사례를 모두 평가한 뒤 목록 화면의 '결과 전송'을 누르면 점수가 확정됩니다.
+ ※ 공정한 심사를 위해 참가자의 소속·성명은 표시되지 않습니다(블라인드 심사).
+ ※ 결과보고서를 보면서 평가하기 좋도록 PC 사용을 권장합니다.
+
+■ 문의: 사업통합관리팀(내선 2453)`;
+}
+
+function paneTeams() {
+  const fcell = t => { const f = fileOf(t.team_no);
+    return `<div class="fline"><span class="fst" id="fs${t.team_no}" ${f ? `title="${h(f.name)} (${fsize(f.size)}, ${new Date(f.uploaded_at).toLocaleString('ko-KR')})"` : ''}>${f ? `<b>${h(f.name)}</b> <span class="muted">${fsize(f.size)}</span>` : '<span class="muted">미등록</span>'}</span>
+        <label class="btn xs ${f ? '' : 'pri'}">${f ? '교체' : 'PDF 올리기'}<input type="file" accept="application/pdf,.pdf" class="fu" data-t="${t.team_no}" hidden></label>
+        ${f ? `<button class="btn xs fv" data-t="${t.team_no}">보기</button><button class="btn xs danger fd" data-t="${t.team_no}">삭제</button>` : ''}</div>`; };
+  $('#pane').innerHTML = `
+    <div class="note">결과보고서는 PDF 파일(50MB 이하)로 올리면 심사위원이 평가표 화면에서 바로 보고 내려받을 수 있습니다. 시제품 실행링크·시연 영상 주소는 입력 후 저장하면 평가표에서 새 창으로 열립니다.</div>
+    <div class="tbl-wrap"><table class="t compact">
+      <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>시연 영상</th><th>링크</th></tr></thead>
+      <tbody>${D.teams.map(t => `<tr data-t="${t.team_no}"><td>${t.team_no}</td><td class="l nowrap" title="${h(t.title)}">${h(t.title)}</td>
+        <td class="l">${fcell(t)}</td>
+        ${['demo_url','video_url'].map(k => `<td><input class="inp" data-k="${k}" value="${h(t[k])}" placeholder="https://"></td>`).join('')}
+        <td><button class="btn xs ts">저장</button></td></tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('.ts').forEach(b => b.onclick = async () => {
+    const tr = b.closest('tr'), t = D.teams.find(x => x.team_no === +tr.dataset.t), args = { team_no:t.team_no, report_url:t.report_url };
+    for (const i of tr.querySelectorAll('input.inp')) {
+      const v = i.value.trim();
+      if (v && !/^https?:\/\//i.test(v)) return toast('주소는 http:// 또는 https://로 시작해야 합니다.');
+      args[i.dataset.k] = v;
+    }
+    if (await adminDo('set_team', args)) toast(t.team_no + '번 사례 자료를 저장했습니다.');
+  });
+  document.querySelectorAll('.fu').forEach(inp => inp.onchange = async () => {
+    const file = inp.files[0], t = +inp.dataset.t; inp.value = '';
+    if (!file) return;
+    if (fileOf(t) && !await confirmBox('결과보고서 교체', `${t}번 사례의 기존 PDF를 <b>${h(file.name)}</b>(으)로 바꿉니다.`, '교체')) return;
+    const st = $('#fs' + t);
+    document.querySelectorAll('.fu,.fv,.fd').forEach(x => x.disabled = true);
+    try {
+      await uploadPdf(t, file, (i, n) => { st.innerHTML = `<b>올리는 중 ${Math.round(i / n * 100)}%</b>`; });
+      await adminDo('load'); toast(t + '번 결과보고서를 올렸습니다.');
+    } catch (e) { toast(e.message); }
+    renderAdmin();
+  });
+  document.querySelectorAll('.fv').forEach(b => b.onclick = async () => {
+    const t = +b.dataset.t; b.disabled = true; b.textContent = '불러오는 중…';
+    try {
+      const r = await loadPdf(t);
+      await modal(`${t}번 결과보고서`, `<p class="muted" style="margin:0 0 12px">${h(r.name)}</p>
+        <a class="btn" href="${r.url}" target="_blank" rel="noopener">새 창에서 보기</a> <a class="btn pri" href="${r.url}" download="${h(r.name)}">다운로드</a>`,
+        [{ label:'닫기', value:null }]);
+    } catch (e) { toast(e.message); }
+    b.disabled = false; b.textContent = '보기';
+  });
+  document.querySelectorAll('.fd').forEach(b => b.onclick = async () => {
+    const t = +b.dataset.t;
+    if (!await confirmBox('결과보고서 삭제', `${t}번 사례의 PDF를 삭제합니다. 심사위원 화면에서도 사라집니다.`, '삭제', 'danger')) return;
+    try { await rpc('jd_file_del', { p_code:S.code, p_team:t }); await adminDo('load'); toast('삭제했습니다.'); renderAdmin(); }
+    catch (e) { toast(e.message); }
+  });
+}
+
+// 심사 의견: 사례별로 위원 의견을 모아 봄(제출·임시저장 모두, 임시저장은 표시)
+let cmtFilter = { team:'all', only:true };
+function paneComments() {
+  const list = D.teams.map(t => ({ t, rows: D.scores.filter(s => s.team_no === t.team_no && (s.comment || '').trim())
+    .sort((a, b) => a.judge_no - b.judge_no) }));
+  const shown = list.filter(x => (cmtFilter.team === 'all' || x.t.team_no === +cmtFilter.team) && (!cmtFilter.only || x.rows.length));
+  const total = sum(list.map(x => x.rows.length));
+  $('#pane').innerHTML = `
+    <div class="printonly phead"><h1>2026년 AX 교육·행정혁신 우수사례 심사 의견</h1><div>출력 일시 ${new Date().toLocaleString('ko-KR')} · 의견 ${total}건</div></div>
+    <div class="toolbar">
+      <select class="inp" id="cf" style="max-width:360px"><option value="all">전체 사례</option>${D.teams.map(t => `<option value="${t.team_no}" ${+cmtFilter.team === t.team_no ? 'selected' : ''}>${t.team_no}. ${h(t.title)}</option>`).join('')}</select>
+      <label class="tiny muted" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="co" ${cmtFilter.only ? 'checked' : ''}> 의견 있는 사례만</label>
+      <span class="sp"></span><span class="muted tiny">의견 ${total}건</span>
+      <button class="btn sm" id="cp">PDF 저장</button><button class="btn sm" id="cc">CSV 내보내기</button>
+    </div>
+    ${shown.length ? shown.map(({ t, rows }) => `
+      <div class="card pad cmt-team">
+        <div class="cmt-head"><span class="badge b-navy">${t.team_no}번 · ${h(t.field)}</span><h3>${h(t.title)}</h3><span class="muted tiny">${h(t.members)}</span><span class="sp"></span><span class="muted tiny">의견 ${rows.length}건</span></div>
+        ${rows.length ? rows.map(r => `<div class="cmt">
+            <div class="cmt-meta"><b>${h(jname(r.judge_no))}</b>
+              ${r.submitted ? `<span class="badge b-ok">전송 · ${sum(r.items)}점</span>` : isFull(r) ? `<span class="badge b-navy">평가 완료(전송 전) · ${sum(r.items)}점</span>` : `<span class="badge b-warn">작성 중 · ${sum(r.items)}점</span>`}
+              <span class="muted tiny">${new Date(r.updated_at).toLocaleString('ko-KR')}</span></div>
+            <div class="cmt-body">${h(r.comment)}</div></div>`).join('') : '<div class="muted tiny" style="padding:8px 0">작성된 의견이 없습니다.</div>'}
+      </div>`).join('') : '<div class="card pad muted">조건에 맞는 의견이 없습니다.</div>'}`;
+  $('#cf').onchange = e => { cmtFilter.team = e.target.value; paneComments(); };
+  $('#co').onchange = e => { cmtFilter.only = e.target.checked; paneComments(); };
+  $('#cp').onclick = () => {
+    const title = document.title; document.title = `AX우수사례_심사의견_${stamp()}`;
+    const done = () => { window.removeEventListener('afterprint', done); document.title = title; };
+    window.addEventListener('afterprint', done);
+    toast('인쇄 창의 ‘대상(프린터)’에서 ‘PDF로 저장’을 고르세요.'); setTimeout(() => window.print(), 100);
+  };
+  $('#cc').onclick = () => download(`AX우수사례_심사의견_${stamp()}.csv`, [['번호','분야','사례명','참가자','심사위원','상태','원점수','심사의견','저장시각'],
+    ...list.flatMap(({ t, rows }) => rows.map(r => [t.team_no, t.field, t.title, t.members, jname(r.judge_no), r.submitted ? '전송' : isFull(r) ? '평가 완료(전송 전)' : '작성 중', sum(r.items), r.comment, new Date(r.updated_at).toLocaleString('ko-KR')]))]);
+}
+
+function paneSettings() {
+  $('#pane').innerHTML = `
+    <div class="card pad" style="margin-bottom:14px">
+      <h3 style="font-size:16px;margin-bottom:6px">심사 마감</h3>
+      <p class="muted" style="margin-top:0">마감하면 심사위원은 점수를 저장·제출할 수 없고 보기만 할 수 있습니다. 다시 열 수 있습니다.</p>
+      <button class="btn ${D.closed ? '' : 'acc'}" id="cl">${D.closed ? '심사 다시 열기' : '심사 마감하기'}</button>
+    </div>
+    <div class="card pad" style="margin-bottom:14px">
+      <h3 style="font-size:16px;margin-bottom:6px">내보내기</h3>
+      <p class="muted" style="margin-top:0">엑셀에서 바로 열리는 CSV 파일로 저장합니다.</p>
+      <button class="btn" id="e1">결과·순위 CSV</button> <button class="btn" id="e2">문항별 원점수 CSV</button>
+    </div>
+    ${CFG.url ? '' : `<div class="card pad"><h3 style="font-size:16px;margin-bottom:6px">시연 도구</h3>
+      <p class="muted" style="margin-top:0">시연 모드에서만 보입니다. 위원별 채점 성향이 다른 예시 점수로 집계를 확인해 볼 수 있습니다.</p>
+      <button class="btn" id="df">예시 점수 채우기</button> <button class="btn danger" id="dr">시연 자료 초기화</button></div>`}`;
+  $('#cl').onclick = async () => {
+    if (!await confirmBox(D.closed ? '심사 다시 열기' : '심사 마감', D.closed ? '심사위원이 다시 평가를 저장·제출할 수 있게 됩니다.' : '심사위원이 더 이상 점수를 저장·제출할 수 없습니다.', D.closed ? '다시 열기' : '마감', 'acc')) return;
+    if (await adminDo('close', { closed:!D.closed })) { renderAdmin(); toast('반영했습니다.'); }
+  };
+  $('#e1').onclick = () => exportCSV(compute());
+  $('#e2').onclick = exportItems;
+  if (!CFG.url) {
+    $('#df').onclick = async () => { if (await adminDo('demo_fill')) { toast('예시 점수를 채웠습니다.'); go('#/admin/result'); } };
+    $('#dr').onclick = async () => { if (await confirmBox('초기화', '시연 자료(점수·이름·링크)를 모두 지웁니다.', '초기화', 'danger') && await adminDo('demo_reset')) renderAdmin(); };
+  }
+}
+
+function download(name, rows) {
+  const csv = '﻿' + rows.map(r => r.map(v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+const stamp = () => new Date().toISOString().slice(0, 10);
+function exportCSV(C) {
+  const head = ['전체순위','분야순위','번호','분야','지원주제','사례명','구분','참가자','전송위원수','원점수평균(최고최저제외)','Z점수평균(최고최저제외)','시상','제외사유'];
+  D.judges.forEach(j => head.push(j.name + ' 원점수', j.name + ' Z점수'));
+  const rows = C.rows.map(r => {
+    const row = [r.ok ? r.rank : '', r.frank ?? '', r.team.team_no, r.team.field, r.team.theme, r.team.title, r.team.kind, r.team.members, r.n,
+      r.rawAvg == null ? '' : r.rawAvg.toFixed(2), r.zAvg == null ? '' : r.zAvg.toFixed(3), r.exc ? '시상 제외' : r.rawAvg == null ? '미집계' : !r.ok ? CUT + '점 미만' : r.award || '선정 외', r.exc ? r.exc.reason : ''];
+    D.judges.forEach(j => { const e = r.ent.find(x => x.judge === j.no); row.push(e ? e.raw : '', e ? e.z.toFixed(3) : ''); });
+    return row;
+  });
+  download(`AX우수사례_심사결과_${stamp()}${C.complete ? '' : '_잠정'}.csv`, [head, ...rows]);
+}
+function exportItems() {
+  const head = ['심사위원','번호','사례명','상태', ...CRIT.map((c, i) => `문항${i + 1} ${c.name}(${c.max})`), '합계','심사의견','저장시각'];
+  const rows = D.scores.slice().sort((a, b) => a.judge_no - b.judge_no || a.team_no - b.team_no).map(s => [
+    jname(s.judge_no), s.team_no, D.teams.find(t => t.team_no === s.team_no)?.title, s.submitted ? '전송' : isFull(s) ? '평가 완료(전송 전)' : '작성 중',
+    ...s.items.map(v => v ?? ''), sum(s.items), s.comment, new Date(s.updated_at).toLocaleString('ko-KR')]);
+  download(`AX우수사례_문항별점수_${stamp()}.csv`, [head, ...rows]);
+}
+
+route();
+</script>
+</body>
+</html>
