@@ -422,6 +422,24 @@ textarea.inp.guide-text{min-height:380px;font-size:13.5px;line-height:1.6;white-
 .top .bprog{font-size:14.5px;color:var(--ink2);cursor:pointer;font-weight:600}
 .top .bprog:hover{color:var(--pine)}
 @media (max-width:700px){ .top .bsep,.top .bprog{display:none} }
+/* 평가자료 등록 현황: 등록됨 = 녹색 체크 칸, 미등록 = 점선 칸 */
+.mats{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin-top:14px}
+.mat{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 8px;border-radius:4px;font-size:13.5px;border:1px solid var(--rule);background:var(--sheet)}
+.mat .mk{flex:0 0 auto;width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font-style:normal;font-size:12px;font-weight:700;line-height:1;border:1.5px dashed var(--mute);color:#fff}
+.mat.on{border-color:var(--pine);background:var(--okbg)}
+.mat.on .mk{background:var(--pine);border:0}
+.mat.off{border-style:dashed;background:transparent;color:var(--mute)}
+.mat .ml{color:var(--mute)}
+.mat a{color:var(--ink);text-decoration:none;font-weight:600}
+.mat a:hover{text-decoration:underline}
+.mat .btn{padding:3px 10px}
+.mat .ms{font-size:12px;font-weight:600;color:var(--pine);white-space:nowrap}
+.mat.off .ms{color:var(--mute);font-weight:500}
+.matcnt{align-self:center;margin-left:auto;font-size:13px;color:var(--sub)}
+.mchips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.mc{font-style:normal;font-size:12px;padding:0 7px;border-radius:3px;border:1px dashed var(--rule);color:var(--mute);line-height:1.6}
+.mc.on{border:1px solid var(--pine);background:var(--okbg);color:var(--pine);font-weight:600}
+@media (max-width:560px){ .matcnt{margin-left:0;width:100%} }
 .printonly{display:none}
 .phead{margin-bottom:12px}
 .phead h1{font-size:18px;margin-bottom:6px}
@@ -957,7 +975,9 @@ function renderHome() {
       <div class="teams">${D.teams.filter(t => t.field === fd).map(t => { const s = myScore(t.team_no);
         return `<div class="team" tabindex="0" role="link" data-t="${t.team_no}">
           <span class="no">${t.team_no}</span>
-          <span class="tx"><span class="th">${h(t.theme)}</span><span class="t" style="display:block">${h(t.title)}</span></span>
+          <span class="tx"><span class="th">${h(t.theme)}</span><span class="t" style="display:block">${h(t.title)}</span>
+            <span class="mchips" aria-label="평가자료 등록 현황">${[['결과보고서', !!fileOf(t.team_no)], ['실행링크', !!t.demo_url], ['시연영상', !!t.video_url]].map(([n, on]) =>
+              `<i class="mc ${on ? 'on' : ''}" title="${n} ${on ? '등록됨' : '미등록'}">${on ? '✓ ' : ''}${n}${on ? '' : ' 미등록'}</i>`).join('')}</span></span>
           ${statusBadge(s)}<span class="score">${s ? sum(s.items) + '점' : ''}</span>
         </div>`; }).join('')}</div>`).join('')}
     <div style="height:40px"></div></div>`;
@@ -982,7 +1002,9 @@ function renderTeam(no) {
   if (!form || form.team !== no) form = { team:no, items: s ? s.items.slice() : Array(8).fill(null), comment: s ? s.comment : '', dirty:false };
   const lock = !!sentAt(S.no) || D.closed;
   const idx = D.teams.findIndex(x => x.team_no === no), prev = D.teams[idx - 1], next = D.teams[idx + 1];
-  const link = (u, l, w) => u ? `<a href="${h(u)}" target="_blank" rel="noopener" class="pop" data-w="${w}">${l} ↗</a>` : `<span>${l} (등록 전)</span>`;
+  // 자료 한 칸: 등록됨 = 녹색 체크 + 눌러서 열기 / 미등록 = 점선 칸 + '미등록'
+  const mat = (on, ctl, note) => `<div class="mat ${on ? 'on' : 'off'}"><i class="mk" aria-hidden="true">${on ? '✓' : ''}</i>${ctl}<span class="ms">${on ? (note || '등록됨') : '미등록'}</span></div>`;
+  const link = (u, l, w) => mat(!!u, u ? `<a href="${h(u)}" target="_blank" rel="noopener" class="pop" data-w="${w}">${l} ↗</a>` : `<span class="ml">${l}</span>`);
   const pdf = fileOf(no);
   $('#app').innerHTML = `<div class="wrap tpage" id="tp"><div class="tlayout">
     <aside class="card viewer" id="vw" hidden>
@@ -995,7 +1017,7 @@ function renderTeam(no) {
     <div class="card tinfo">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="badge b-navy">${t.team_no}번</span><span class="muted tiny">${h(t.field)}</span><span class="muted tiny">${h(t.theme)}</span><span style="margin-left:auto">${statusBadge(s)}</span></div>
       <h1>${h(t.title)}</h1>
-      <div class="links">${pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span>결과보고서 (등록 전)</span>'}${link(t.demo_url, '시제품 실행링크', 'jd_demo')}${link(t.video_url, '시연 영상', 'jd_video')}</div>
+      <div class="mats" role="group" aria-label="평가자료 등록 현황">${mat(!!pdf, pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span class="ml">결과보고서</span>')}${link(t.demo_url, '시제품 실행링크', 'jd_demo')}${link(t.video_url, '시연 영상', 'jd_video')}<span class="matcnt">자료 ${[pdf, t.demo_url, t.video_url].filter(Boolean).length}/3 등록</span></div>
     </div>
     ${lock ? `<div class="note">${D.closed ? '심사가 마감되어 평가를 수정할 수 없습니다.' : '결과를 전송해 점수가 확정되었습니다. 수정이 필요하면 사업통합관리팀(2453)에 요청하세요.'}</div>` : ''}
     <div class="legend">
@@ -1033,7 +1055,7 @@ function renderTeam(no) {
   };
   paint();
   // 실행링크·시연 영상은 팝업 창으로(화면의 80% 크기, 가운데). 팝업이 막히면 새 탭으로 열림
-  document.querySelectorAll('.links a.pop').forEach(a => a.onclick = e => {
+  document.querySelectorAll('.mats a.pop').forEach(a => a.onclick = e => {
     const W = Math.round(screen.availWidth * .8), H = Math.round(screen.availHeight * .8);
     const L = Math.round((screen.availWidth - W) / 2 + (screen.availLeft || 0)), T = Math.round((screen.availHeight - H) / 2 + (screen.availTop || 0));
     const win = window.open(a.href, a.dataset.w, `popup=yes,width=${W},height=${H},left=${L},top=${T},resizable=yes,scrollbars=yes`);
