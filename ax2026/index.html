@@ -455,6 +455,18 @@ textarea.inp.guide-text{min-height:380px;font-size:13.5px;line-height:1.6;white-
 .ropt input{margin-top:4px;accent-color:var(--pine)}
 .ropt b{display:block;font-size:14px}
 .ropt small{display:block;color:var(--sub);font-size:12.5px;line-height:1.45}
+/* 평가자료 등록 표: 열 너비를 화면 폭에 맞춰 나눔(가로 스크롤 없이 한 화면) */
+table.t.matt{table-layout:fixed}
+.matt th:nth-child(1){width:4%} .matt th:nth-child(2){width:20%} .matt th:nth-child(3){width:25%}
+.matt th:nth-child(4){width:14%} .matt th:nth-child(5){width:14%} .matt th:nth-child(6){width:17%} .matt th:nth-child(7){width:6%}
+.matt td{overflow:hidden}
+.matt td.nowrap{max-width:none}
+table.t.matt .inp{min-width:0;width:100%}
+.matt .fline{gap:4px}
+.matt .fline .fst{max-width:clamp(52px,6.5vw,100px)}
+.matt td:nth-child(6) .fst{max-width:none}
+.matt th,.matt td{padding-left:5px;padding-right:5px}
+@media (max-width:900px){ table.t.matt{table-layout:auto;min-width:860px} }
 .printonly{display:none}
 .phead{margin-bottom:12px}
 .phead h1{font-size:18px;margin-bottom:6px}
@@ -1623,8 +1635,13 @@ ${who}, 안녕하십니까.
 
 ■ 심사 방법
  1. 평가팀 목록에서 사례를 눌러 결과보고서(PDF), 시제품 실행링크, 시연 영상을 확인합니다.
- 2. 8개 평가요소마다 S~E 등급을 고른 뒤 '저장'합니다. 저장한 평가는 결과 전송 전까지 언제든 고칠 수 있습니다.
- 3. ${n}개 사례를 모두 평가한 뒤 목록 화면의 '결과 전송'을 누르면 점수가 확정됩니다.
+ 2. 시제품 실행링크는 새 창으로 열립니다. 시제품의 로그인 방식은 사례마다 다르므로, 평가표 자료 아래의 '시제품 접속' 줄에서 확인합니다.
+    - 시제품 접속 계정: 표시된 아이디·비밀번호로 로그인합니다(복사 버튼 이용, 비밀번호는 '보기'로 확인).
+    - 시연용 바로 로그인 제공: 시제품 로그인 화면의 시연용 로그인 버튼으로 바로 들어갑니다. 별도 계정 정보는 없으며, 버튼 위치는 안내 문구에 적혀 있습니다.
+    - 로그인 불필요: 로그인 없이 바로 이용합니다.
+    - 해당 줄이 없는 사례는 사업통합관리팀에 문의해 주십시오.
+ 3. 8개 평가요소마다 S~E 등급을 고른 뒤 '저장'합니다. 저장한 평가는 결과 전송 전까지 언제든 고칠 수 있습니다.
+ 4. ${n}개 사례를 모두 평가한 뒤 목록 화면의 '결과 전송'을 누르면 점수가 확정됩니다.
  ※ 공정한 심사를 위해 참가자의 소속·성명은 표시되지 않습니다(블라인드 심사).
  ※ 결과보고서를 보면서 평가하기 좋도록 PC 사용을 권장합니다.
 
@@ -1638,13 +1655,13 @@ function paneTeams() {
         ${f ? `<button class="btn xs fv" data-t="${t.team_no}">보기</button><button class="btn xs danger fd" data-t="${t.team_no}">삭제</button>` : ''}</div>`; };
   $('#pane').innerHTML = `
     <div class="note">결과보고서는 PDF 파일(50MB 이하)로 올리면 심사위원이 평가표 화면에서 바로 보고 내려받을 수 있습니다. 시제품 실행링크·시연 영상 주소는 입력 후 저장하면 평가표에서 새 창으로 열립니다. 시제품 로그인 방식은 사례마다 ‘시제품 계정’에서 꼭 설정해 주세요(계정 입력 필요 / 시연용 바로 로그인 제공 / 로그인 불필요). 설정한 내용이 평가표 자료 아래에 표시되어, 계정이 없는 이유를 심사위원이 오해하지 않습니다. ${D.teams.some(t => !acctMode(t)) ? `<span class="badge b-warn">접속 방식 미설정 ${D.teams.filter(t => !acctMode(t)).length}건</span>` : ''}</div>
-    <div class="tbl-wrap"><table class="t compact">
+    <div class="tbl-wrap"><table class="t compact matt">
       <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>시연 영상</th><th>시제품 계정</th><th>링크</th></tr></thead>
       <tbody>${D.teams.map(t => `<tr data-t="${t.team_no}"><td>${t.team_no}</td><td class="l nowrap" title="${h(t.title)}">${h(t.title)}</td>
         <td class="l">${fcell(t)}</td>
         ${['demo_url','video_url'].map(k => `<td><input class="inp" data-k="${k}" value="${h(t[k])}" placeholder="https://"></td>`).join('')}
-        <td class="l"><div class="fline">${acctMode(t) === 'account' ? `<span class="fst" title="${h(t.demo_id)}"><span class="badge b-ok">계정 필요</span> <b>${h(t.demo_id) || '(아이디 없음)'}</b></span>`
-            : acctMode(t) ? `<span class="fst"><span class="badge b-ok">${MODE_LABEL[acctMode(t)]}</span></span>` : '<span class="badge b-warn">미설정</span>'}
+        <td class="l"><div class="fline">${acctMode(t) === 'account' ? `<span class="fst" title="아이디: ${h(t.demo_id) || '(없음)'}"><span class="badge b-ok">계정 필요</span></span>`
+            : acctMode(t) ? `<span class="fst" title="${MODE_LABEL[acctMode(t)]}"><span class="badge b-ok">${MODE_CHIP[acctMode(t)]}</span></span>` : '<span class="badge b-warn">미설정</span>'}
           <button class="btn xs ${acctMode(t) ? '' : 'pri'} ac" data-t="${t.team_no}">${acctMode(t) ? '수정' : '설정'}</button></div></td>
         <td><button class="btn xs ts">저장</button></td></tr>`).join('')}</tbody></table></div>`;
   // 시제품 로그인 방식 입력 창. 입력이 맞지 않으면 쓴 값을 채운 채로 창을 다시 엶
