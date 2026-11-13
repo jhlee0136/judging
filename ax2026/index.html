@@ -440,6 +440,13 @@ textarea.inp.guide-text{min-height:380px;font-size:13.5px;line-height:1.6;white-
 .mc{font-style:normal;font-size:12px;padding:0 7px;border-radius:3px;border:1px dashed var(--rule);color:var(--mute);line-height:1.6}
 .mc.on{border:1px solid var(--pine);background:var(--okbg);color:var(--pine);font-weight:600}
 @media (max-width:560px){ .matcnt{margin-left:0;width:100%} }
+/* 시제품 접속 계정 줄(평가표) */
+.acct{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin-top:10px;padding:9px 14px;border:1px solid var(--rule);border-left:3px solid var(--pine);border-radius:4px;background:var(--paper);font-size:13.5px}
+.acct .at{font-family:var(--display);font-weight:600}
+.acct .kv{display:inline-flex;align-items:center;gap:6px}
+.acct .kv em{font-style:normal;color:var(--sub);font-size:12.5px}
+.acct code{font-family:ui-monospace,Consolas,monospace;font-size:14px;background:var(--sheet);border:1px solid var(--hair);border-radius:3px;padding:1px 8px;letter-spacing:.02em;user-select:all}
+.acct .an{flex:1 1 100%;color:var(--sub)}
 .printonly{display:none}
 .phead{margin-bottom:12px}
 .phead h1{font-size:18px;margin-bottom:6px}
@@ -604,6 +611,12 @@ const confirmBox = (t, b, ok = '확인', cls = 'pri') => modal(t, `<p class="mut
 
 /* ===== 서버 호출 ===== */
 // 로그인된 상태에서 접속코드가 거부되면(코드 변경·잠금) 자동 갱신을 멈추고 로그아웃 → 실패가 쌓여 잠기는 것을 막음
+// 클립보드 복사(막히면 임시 입력칸으로 대체)
+async function copyText(txt) {
+  try { await navigator.clipboard.writeText(txt); return true; }
+  catch { const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch {} ta.remove(); return ok; }
+}
 const AUTH_FAIL = /접속코드가 맞지 않습니다|다시 로그인해 주세요/;
 function sessionExpired() {
   clearInterval(timer); timer = null;
@@ -647,7 +660,7 @@ const Mock = (() => {
   const fresh = () => ({
     closed:false, recuse:[], scores:[], excluded:[], sent:[], awards:{ grand:1, fields:{ '교육혁신':{ best:1, enc:2 }, '행정혁신':{ best:1, enc:2 } } },
     judges:[0,1,2,3,4,5,6].map(n => ({ no:n, name: n ? '심사위원 ' + n : '관리자', code: 'DEMO000' + n })),
-    teams:TEAMS.map(([team_no,field,theme,title,kind,members]) => ({ team_no,field,theme,title,kind,members,report_url:'',demo_url:'',video_url:'' })),
+    teams:TEAMS.map(([team_no,field,theme,title,kind,members]) => ({ team_no,field,theme,title,kind,members,report_url:'',demo_url:'',video_url:'',demo_id:'',demo_pw:'',demo_note:'' })),
   });
   const load = () => Object.assign({ excluded:[], sent:[] }, store.get('jd_demo', localStorage) || fresh());
   const FILES = {};                     // 시연용 PDF는 새로고침하면 사라짐(메모리 보관)
@@ -748,7 +761,8 @@ const Mock = (() => {
       case 'delete_score': drop(); break;
       case 'recuse': if (g.on) { if (!db.recuse.some(r => r.judge_no === j && r.team_no === t)) db.recuse.push({ judge_no:j, team_no:t }); drop(); }
                      else db.recuse = db.recuse.filter(r => !(r.judge_no === j && r.team_no === t)); break;
-      case 'set_team': Object.assign(db.teams.find(x => x.team_no === t), { report_url:g.report_url || '', demo_url:g.demo_url || '', video_url:g.video_url || '' }); break;
+      case 'set_team': { const tm = db.teams.find(x => x.team_no === t);   // 보낸 항목만 바꾸고 나머지는 유지
+        for (const k of ['report_url','demo_url','video_url','demo_id','demo_pw','demo_note']) if (g[k] != null) tm[k] = String(g[k]); break; }
       case 'close': db.closed = !!g.closed; break;
       case 'demo_fill': {   // 시연용 예시 점수: 위원마다 채점 성향(관대·엄격)을 다르게
         db.scores = [];
@@ -976,7 +990,7 @@ function renderHome() {
         return `<div class="team" tabindex="0" role="link" data-t="${t.team_no}">
           <span class="no">${t.team_no}</span>
           <span class="tx"><span class="th">${h(t.theme)}</span><span class="t" style="display:block">${h(t.title)}</span>
-            <span class="mchips" aria-label="평가자료 등록 현황">${[['결과보고서', !!fileOf(t.team_no)], ['실행링크', !!t.demo_url], ['시연영상', !!t.video_url]].map(([n, on]) =>
+            <span class="mchips" aria-label="평가자료 등록 현황">${[['결과보고서', !!fileOf(t.team_no)], ['실행링크', !!t.demo_url], ['시연영상', !!t.video_url], ...((t.demo_id || t.demo_pw) ? [['접속계정', true]] : [])].map(([n, on]) =>
               `<i class="mc ${on ? 'on' : ''}" title="${n} ${on ? '등록됨' : '미등록'}">${on ? '✓ ' : ''}${n}${on ? '' : ' 미등록'}</i>`).join('')}</span></span>
           ${statusBadge(s)}<span class="score">${s ? sum(s.items) + '점' : ''}</span>
         </div>`; }).join('')}</div>`).join('')}
@@ -1004,6 +1018,14 @@ function renderTeam(no) {
   const idx = D.teams.findIndex(x => x.team_no === no), prev = D.teams[idx - 1], next = D.teams[idx + 1];
   // 자료 한 칸: 등록됨 = 녹색 체크 + 눌러서 열기 / 미등록 = 점선 칸 + '미등록'
   const mat = (on, ctl, note) => `<div class="mat ${on ? 'on' : 'off'}"><i class="mk" aria-hidden="true">${on ? '✓' : ''}</i>${ctl}<span class="ms">${on ? (note || '등록됨') : '미등록'}</span></div>`;
+  // 시제품이 로그인을 요구할 때 쓸 시험 계정(관리자가 등록한 경우에만 표시)
+  const hasAcct = !!(t.demo_id || t.demo_pw || t.demo_note);
+  const acctPanel = !hasAcct ? '' : `<div class="acct" role="group" aria-label="시제품 접속 계정">
+      <b class="at">시제품 접속 계정</b>
+      ${t.demo_id ? `<span class="kv"><em>아이디</em><code>${h(t.demo_id)}</code><button type="button" class="btn xs" data-cp="id">복사</button></span>` : ''}
+      ${t.demo_pw ? `<span class="kv"><em>비밀번호</em><code id="pwv">${'•'.repeat(Math.min(12, t.demo_pw.length))}</code><button type="button" class="btn xs" id="pwt">보기</button><button type="button" class="btn xs" data-cp="pw">복사</button></span>` : ''}
+      ${t.demo_note ? `<span class="an">${h(t.demo_note)}</span>` : ''}
+    </div>`;
   const link = (u, l, w) => mat(!!u, u ? `<a href="${h(u)}" target="_blank" rel="noopener" class="pop" data-w="${w}">${l} ↗</a>` : `<span class="ml">${l}</span>`);
   const pdf = fileOf(no);
   $('#app').innerHTML = `<div class="wrap tpage" id="tp"><div class="tlayout">
@@ -1017,7 +1039,7 @@ function renderTeam(no) {
     <div class="card tinfo">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="badge b-navy">${t.team_no}번</span><span class="muted tiny">${h(t.field)}</span><span class="muted tiny">${h(t.theme)}</span><span style="margin-left:auto">${statusBadge(s)}</span></div>
       <h1>${h(t.title)}</h1>
-      <div class="mats" role="group" aria-label="평가자료 등록 현황">${mat(!!pdf, pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span class="ml">결과보고서</span>')}${link(t.demo_url, '시제품 실행링크', 'jd_demo')}${link(t.video_url, '시연 영상', 'jd_video')}<span class="matcnt">자료 ${[pdf, t.demo_url, t.video_url].filter(Boolean).length}/3 등록</span></div>
+      <div class="mats" role="group" aria-label="평가자료 등록 현황">${mat(!!pdf, pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span class="ml">결과보고서</span>')}${link(t.demo_url, '시제품 실행링크', 'jd_demo')}${link(t.video_url, '시연 영상', 'jd_video')}<span class="matcnt">자료 ${[pdf, t.demo_url, t.video_url].filter(Boolean).length}/3 등록</span></div>${acctPanel}
     </div>
     ${lock ? `<div class="note">${D.closed ? '심사가 마감되어 평가를 수정할 수 없습니다.' : '결과를 전송해 점수가 확정되었습니다. 수정이 필요하면 사업통합관리팀(2453)에 요청하세요.'}</div>` : ''}
     <div class="legend">
@@ -1054,6 +1076,14 @@ function renderTeam(no) {
     $('#tot').innerHTML = `${sum(form.items)}<small> / 100${left ? ` · 미선택 ${left}` : ''}</small>`;
   };
   paint();
+  document.querySelectorAll('.acct [data-cp]').forEach(b => b.onclick = async () => {
+    const ok = await copyText(b.dataset.cp === 'id' ? t.demo_id : t.demo_pw);
+    toast(ok ? (b.dataset.cp === 'id' ? '아이디를 복사했습니다.' : '비밀번호를 복사했습니다.') : '복사하지 못했습니다. 직접 입력해 주세요.');
+  });
+  if ($('#pwt')) $('#pwt').onclick = () => {
+    const el = $('#pwv'), show = $('#pwt').textContent === '보기';
+    el.textContent = show ? t.demo_pw : '•'.repeat(Math.min(12, t.demo_pw.length)); $('#pwt').textContent = show ? '가리기' : '보기';
+  };
   // 실행링크·시연 영상은 팝업 창으로(화면의 80% 크기, 가운데). 팝업이 막히면 새 탭으로 열림
   document.querySelectorAll('.mats a.pop').forEach(a => a.onclick = e => {
     const W = Math.round(screen.availWidth * .8), H = Math.round(screen.availHeight * .8);
@@ -1589,13 +1619,30 @@ function paneTeams() {
         <label class="btn xs ${f ? '' : 'pri'}">${f ? '교체' : 'PDF 올리기'}<input type="file" accept="application/pdf,.pdf" class="fu" data-t="${t.team_no}" hidden></label>
         ${f ? `<button class="btn xs fv" data-t="${t.team_no}">보기</button><button class="btn xs danger fd" data-t="${t.team_no}">삭제</button>` : ''}</div>`; };
   $('#pane').innerHTML = `
-    <div class="note">결과보고서는 PDF 파일(50MB 이하)로 올리면 심사위원이 평가표 화면에서 바로 보고 내려받을 수 있습니다. 시제품 실행링크·시연 영상 주소는 입력 후 저장하면 평가표에서 새 창으로 열립니다.</div>
+    <div class="note">결과보고서는 PDF 파일(50MB 이하)로 올리면 심사위원이 평가표 화면에서 바로 보고 내려받을 수 있습니다. 시제품 실행링크·시연 영상 주소는 입력 후 저장하면 평가표에서 새 창으로 열립니다. 시제품이 로그인을 요구하면 ‘시제품 계정’에 심사 전용 시험 계정을 입력하세요. 평가표 자료 아래에 아이디·비밀번호가 표시됩니다.</div>
     <div class="tbl-wrap"><table class="t compact">
-      <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>시연 영상</th><th>링크</th></tr></thead>
+      <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>시연 영상</th><th>시제품 계정</th><th>링크</th></tr></thead>
       <tbody>${D.teams.map(t => `<tr data-t="${t.team_no}"><td>${t.team_no}</td><td class="l nowrap" title="${h(t.title)}">${h(t.title)}</td>
         <td class="l">${fcell(t)}</td>
         ${['demo_url','video_url'].map(k => `<td><input class="inp" data-k="${k}" value="${h(t[k])}" placeholder="https://"></td>`).join('')}
+        <td class="l"><div class="fline">${(t.demo_id || t.demo_pw) ? `<span class="fst" title="${h(t.demo_id)}"><span class="badge b-ok">입력됨</span> <b>${h(t.demo_id) || '(아이디 없음)'}</b></span>` : '<span class="muted tiny">없음</span>'}
+          <button class="btn xs ${(t.demo_id || t.demo_pw) ? '' : 'pri'} ac" data-t="${t.team_no}">${(t.demo_id || t.demo_pw) ? '수정' : '입력'}</button></div></td>
         <td><button class="btn xs ts">저장</button></td></tr>`).join('')}</tbody></table></div>`;
+  document.querySelectorAll('.ac').forEach(b => b.onclick = async () => {
+    const t = D.teams.find(x => x.team_no === +b.dataset.t);
+    const p = modal(`${t.team_no}번 시제품 접속 계정`, `<p class="muted" style="margin:0 0 12px">시제품이 로그인을 요구할 때 심사위원에게 보여 줄 정보입니다. <b>심사 전용 시험 계정만</b> 입력하세요. 평문으로 저장되며 로그인한 심사위원에게만 보입니다. 참가자의 이름·소속이 드러나는 아이디는 쓰지 마세요(블라인드).</p>
+      <label class="field" style="margin-top:0"><span>아이디</span><input class="inp" id="ac_id" maxlength="200" autocomplete="off" value="${h(t.demo_id)}"></label>
+      <label class="field"><span>비밀번호</span><input class="inp" id="ac_pw" maxlength="200" autocomplete="off" value="${h(t.demo_pw)}"></label>
+      <label class="field"><span>안내 (선택)</span><textarea class="inp" id="ac_note" maxlength="500" style="min-height:64px" placeholder="예: 로그인 후 상단 '교육' 메뉴에서 시작하세요.">${h(t.demo_note)}</textarea></label>`,
+      [{ label:'취소', value:false }, ...((t.demo_id || t.demo_pw || t.demo_note) ? [{ label:'모두 지우기', value:'clear', cls:'danger' }] : []), { label:'저장', value:true, cls:'pri' }]);
+    const f = { id:$('#ac_id'), pw:$('#ac_pw'), note:$('#ac_note') }, cur = {};
+    for (const k in f) { cur[k] = f[k].value; f[k].addEventListener('input', () => cur[k] = f[k].value); }
+    const v = await p;
+    if (!v) return;
+    const args = v === 'clear' ? { team_no:t.team_no, demo_id:'', demo_pw:'', demo_note:'' }
+      : { team_no:t.team_no, demo_id:cur.id.trim(), demo_pw:cur.pw.trim(), demo_note:cur.note.trim() };
+    if (await adminDo('set_team', args)) { renderAdmin(); toast(v === 'clear' ? '접속 계정을 지웠습니다.' : '접속 계정을 저장했습니다.'); }
+  });
   document.querySelectorAll('.ts').forEach(b => b.onclick = async () => {
     const tr = b.closest('tr'), t = D.teams.find(x => x.team_no === +tr.dataset.t), args = { team_no:t.team_no, report_url:t.report_url };
     for (const i of tr.querySelectorAll('input.inp')) {
