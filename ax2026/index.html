@@ -438,6 +438,11 @@ textarea.inp.guide-text{min-height:380px;font-size:13.5px;line-height:1.6;white-
 .matcnt{align-self:center;margin-left:auto;font-size:13px;color:var(--sub)}
 .mchips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .mc{font-style:normal;font-size:12px;padding:0 7px;border-radius:3px;border:1px dashed var(--rule);color:var(--mute);line-height:1.6}
+.mc.warn{border:1px solid #D9A36A;background:#FBEBDD;color:#8A3A12;font-weight:600}
+.pgwarn{align-self:center;margin-left:4px;padding:1px 8px;border:1px solid #D9A36A;border-radius:3px;background:#FBEBDD;color:#8A3A12;font-size:12.5px;font-weight:600;white-space:nowrap}
+.pgnote{padding:7px 12px;background:#FBEBDD;border-bottom:1px solid #E3B58C;font-size:13px;color:#6B2E0E;line-height:1.6}
+.pgnote .btn{margin-left:6px}
+.pgbad{color:#B03A1E;font-weight:700}
 .mc.on{border:1px solid var(--pine);background:var(--okbg);color:var(--pine);font-weight:600}
 @media (max-width:560px){ .matcnt{margin-left:0;width:100%} }
 /* 시제품 접속 계정 줄(평가표) */
@@ -706,7 +711,7 @@ const Mock = (() => {
     zips: Object.values(ZIPS).filter(f => f.complete && vis(db, no, f.team_no))
       .map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name: no === 0 ? name : `시제품_${team_no}번.zip`, size, chunks, uploaded_at })),
     files: Object.values(FILES).filter(f => f.complete && (no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === f.team_no)))
-      .map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name: no === 0 ? name : `결과보고서_${team_no}번.pdf`, size, chunks, uploaded_at })),
+      .map(({ team_no, name, size, chunks, uploaded_at, pages }) => ({ team_no, name: no === 0 ? name : `결과보고서_${team_no}번.pdf`, size, chunks, uploaded_at, pages: pages ?? null })),
     excluded: no === 0 ? db.excluded : [],
     awards: no === 0 ? db.awards : null,
     sent: db.sent.filter(x => no === 0 || x.judge_no === no),
@@ -724,6 +729,7 @@ const Mock = (() => {
     else if (fn === 'jd_html_put') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mPutHtml(a);
     else if (fn === 'jd_html_get') out = !auth(db, a.p_judge, a.p_code) ? err('다시 로그인해 주세요.') : HTMLS[a.p_team]?.complete ? { data:HTMLS[a.p_team].parts[a.p_idx] } : err('등록된 시제품 HTML 파일이 없습니다.');
     else if (fn === 'jd_html_del') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (delete HTMLS[a.p_team], { ok:true });
+    else if (fn === 'jd_file_pages') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (FILES[a.p_team] && (FILES[a.p_team].pages = a.p_pages > 0 ? a.p_pages : null), { ok:true });
     else if (fn === 'jd_zip_put') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mPutZip(a);
     else if (fn === 'jd_zip_get') out = !auth(db, a.p_judge, a.p_code) ? err('다시 로그인해 주세요.') : ZIPS[a.p_team]?.complete ? { data:ZIPS[a.p_team].parts[a.p_idx] } : err('등록된 시제품 ZIP 파일이 없습니다.');
     else if (fn === 'jd_zip_del') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (delete ZIPS[a.p_team], { ok:true });
@@ -878,6 +884,40 @@ async function loadPdf(team, onProg) {
     parts.push(u); onProg && onProg(i + 1, f.chunks);
   }
   return pdfCache[key] = { url:URL.createObjectURL(new Blob(parts, { type:'application/pdf' })), name:f.name };
+}
+
+/* ===== 결과보고서 쪽수: 관리자가 올릴 때(또는 처음 열 때) 세어 저장 → 심사위원에게 분량 초과를 알림 ===== */
+const PDF_LIMIT = 5;
+const pgOver = f => !!(f && f.pages > PDF_LIMIT);
+const pdfLabel = f => `결과보고서 보기 (PDF ${fsize(f.size)}${f.pages ? ' · ' + f.pages + '쪽' : ''})`;
+let pdfjsP = null;
+function loadPdfJs() {
+  const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  return pdfjsP || (pdfjsP = new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = base + 'pdf.min.js';
+    sc.onload = async () => {
+      try { const w = await fetch(base + 'pdf.worker.min.js').then(r => r.text());
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([w], { type:'text/javascript' })); res(window.pdfjsLib); }
+      catch (e) { rej(e); }
+    };
+    sc.onerror = () => rej(new Error('PDF 도구를 불러오지 못했습니다.'));
+    document.head.appendChild(sc);
+  }));
+}
+async function countPages(team) {
+  const r = await loadPdf(team), buf = await fetch(r.url).then(x => x.arrayBuffer()), lib = await loadPdfJs();
+  const doc = await lib.getDocument({ data:buf }).promise, n = doc.numPages; doc.destroy(); return n;
+}
+const pgTried = new Set();
+async function ensurePages() {
+  if (!isAdmin()) return;
+  const todo = (D?.files || []).filter(f => f.pages == null && !pgTried.has(f.team_no + '|' + f.uploaded_at));
+  if (!todo.length) return;
+  for (const f of todo) {
+    pgTried.add(f.team_no + '|' + f.uploaded_at);
+    try { await rpc('jd_file_pages', { p_code:S.code, p_team:f.team_no, p_pages:await countPages(f.team_no) }); } catch {}
+  }
+  if (isAdmin() && await adminDo('load') && adminTab === 'teams' && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName || '')) renderAdmin();
 }
 
 /* ===== 시제품 HTML 파일: 올린 HTML을 격리된 틀(sandbox) 안에서 실행 ===== */
@@ -1124,7 +1164,7 @@ function renderHome() {
           <span class="no">${t.team_no}</span>
           <span class="tx"><span class="th">${h(t.theme)}</span><span class="t" style="display:block">${h(t.title)}</span>
             <span class="mchips" aria-label="평가자료 등록 현황">${[['결과보고서', !!fileOf(t.team_no)], ['시제품', !!t.demo_url || !!htmlOf(t.team_no) || !!zipOf(t.team_no)], ['시연영상', !!t.video_url], ...(acctMode(t) ? [[MODE_CHIP[acctMode(t)], true]] : [])].map(([n, on]) =>
-              `<i class="mc ${on ? 'on' : ''}" title="${n} ${on ? '등록됨' : '미등록'}">${on ? '✓ ' : ''}${n}${on ? '' : ' 미등록'}</i>`).join('')}</span></span>
+              `<i class="mc ${on ? 'on' : ''}" title="${n} ${on ? '등록됨' : '미등록'}">${on ? '✓ ' : ''}${n}${on ? '' : ' 미등록'}</i>`).join('')}${pgOver(fileOf(t.team_no)) ? `<i class="mc warn" title="결과보고서 ${PDF_LIMIT}쪽 이내 기준 초과">분량 초과 ${fileOf(t.team_no).pages}쪽</i>` : ''}</span></span>
           ${statusBadge(s)}<span class="score">${s ? sum(s.items) + '점' : ''}</span>
         </div>`; }).join('')}</div>`).join('')}
     <div style="height:40px"></div></div>`;
@@ -1169,6 +1209,7 @@ function renderTeam(no) {
     <aside class="card viewer" id="vw" hidden>
       <div class="vbar"><b>결과보고서</b><span class="muted tiny" id="vn"></span><span class="sp"></span>
         <a class="btn sm" id="vo" target="_blank" rel="noopener" hidden>새 창에서 보기</a><a class="btn sm pri" id="vd" hidden>다운로드</a><button type="button" class="btn sm" id="vx">닫기</button></div>
+      ${pgOver(pdf) ? `<div class="pgnote"><b>분량 기준 초과</b> 결과보고서는 ${PDF_LIMIT}쪽 이내로 작성하도록 안내되었으나, 이 보고서는 <b>${pdf.pages}쪽</b>입니다(${pdf.pages - PDF_LIMIT}쪽 초과). <button type="button" class="btn xs" id="pgx">${PDF_LIMIT + 1}쪽부터 보기</button></div>` : ''}
       <div id="vb" class="vbody"></div>
     </aside>
     <div class="tform">
@@ -1176,7 +1217,7 @@ function renderTeam(no) {
     <div class="card tinfo">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="badge b-navy">${t.team_no}번</span><span class="muted tiny">${h(t.field)}</span><span class="muted tiny">${h(t.theme)}</span><span style="margin-left:auto">${statusBadge(s)}</span></div>
       <h1>${h(t.title)}</h1>
-      <div class="mats" role="group" aria-label="평가자료 등록 현황">${mat(!!pdf, pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span class="ml">결과보고서</span>')}${hf ? mat(true, `<button type="button" class="btn sm pri" id="hv">시제품 실행 (HTML 파일)</button>`) : ''}${t.demo_url ? link(t.demo_url, '시제품 실행링크', 'jd_demo') : ''}${zf ? mat(true, `<button type="button" class="btn sm" id="zv">시제품 다운로드 (ZIP ${fsize(zf.size)})</button>`) : ''}${!t.demo_url && !hf && !zf ? mat(false, '<span class="ml">시제품</span>') : ''}${link(t.video_url, '시연 영상', 'jd_video')}<span class="matcnt">자료 ${[pdf, t.demo_url || hf || zf, t.video_url].filter(Boolean).length}/3 등록</span></div>${acctPanel}
+      <div class="mats" role="group" aria-label="평가자료 등록 현황">${mat(!!pdf, pdf ? `<button type="button" class="btn sm pri" id="rv">${pdfLabel(pdf)}</button>${pgOver(pdf) ? `<span class="pgwarn" title="결과보고서는 ${PDF_LIMIT}쪽 이내로 작성하도록 안내되었습니다">${PDF_LIMIT}쪽 초과 (${pdf.pages}쪽)</span>` : ''}` : '<span class="ml">결과보고서</span>')}${hf ? mat(true, `<button type="button" class="btn sm pri" id="hv">시제품 실행 (HTML 파일)</button>`) : ''}${t.demo_url ? link(t.demo_url, '시제품 실행링크', 'jd_demo') : ''}${zf ? mat(true, `<button type="button" class="btn sm" id="zv">시제품 다운로드 (ZIP ${fsize(zf.size)})</button>`) : ''}${!t.demo_url && !hf && !zf ? mat(false, '<span class="ml">시제품</span>') : ''}${link(t.video_url, '시연 영상', 'jd_video')}<span class="matcnt">자료 ${[pdf, t.demo_url || hf || zf, t.video_url].filter(Boolean).length}/3 등록</span></div>${acctPanel}
     </div>
     ${lock ? `<div class="note">${D.closed ? '심사가 마감되어 평가를 수정할 수 없습니다.' : '결과를 전송해 점수가 확정되었습니다. 수정이 필요하면 사업통합관리팀(2453)에 요청하세요.'}</div>` : ''}
     <div class="legend">
@@ -1232,12 +1273,12 @@ function renderTeam(no) {
   if (hf) $('#hv').onclick = async e => { const b = e.currentTarget; b.disabled = true; b.textContent = '불러오는 중…'; await openHtml(no); b.disabled = false; b.textContent = '시제품 실행 (HTML 파일)'; };
   if (pdf) {
     // 넓은 화면: 왼쪽 결과보고서 · 오른쪽 평가표 / 좁은 화면: 평가표 위에 결과보고서
-    const wide = () => matchMedia('(min-width: 1100px)').matches;
-    const close = () => { $('#vw').hidden = true; $('#tp').classList.remove('split'); $('#rv').textContent = `결과보고서 보기 (PDF ${fsize(pdf.size)})`; viewerOn = false; };
+    const wide = () => matchMedia('(min-width: 1100px)').matches, box0 = () => $('#vw');
+    const close = () => { $('#vw').hidden = true; $('#tp').classList.remove('split'); $('#rv').textContent = pdfLabel(pdf); viewerOn = false; };
     $('#rv').onclick = async () => {
       const box = $('#vw');
       if (!box.hidden) return close();
-      box.hidden = false; viewerOn = true; $('#vn').textContent = pdf.name + ' · ' + fsize(pdf.size);
+      box.hidden = false; viewerOn = true; $('#vn').textContent = pdf.name + ' · ' + fsize(pdf.size) + (pdf.pages ? ' · ' + pdf.pages + '쪽' : '');
       $('#rv').textContent = '결과보고서 닫기';
       if (wide()) { $('#tp').classList.add('split'); window.scrollTo({ top:0 }); }
       else box.scrollIntoView({ behavior:'smooth', block:'start' });
@@ -1252,6 +1293,12 @@ function renderTeam(no) {
       } catch (e) { $('#vb').innerHTML = `<div class="spin">${h(e.message)}</div>`; }
     };
     $('#vx').onclick = close;
+    if ($('#pgx')) $('#pgx').onclick = async () => {
+      if (box0().hidden) $('#rv').click();
+      for (let k = 0; k < 100 && !$('#vb iframe'); k++) await new Promise(r => setTimeout(r, 100));
+      try { const r = await loadPdf(no), old = $('#vb iframe'); if (!old) return;
+        const fr = document.createElement('iframe'); fr.title = '결과보고서'; fr.src = `${r.url}#page=${PDF_LIMIT + 1}&navpanes=0&view=FitH`; old.replaceWith(fr); } catch (e) { toast(e.message); }
+    };
     if (viewerOn) $('#rv').click();          // 다른 팀으로 넘어가도 보던 방식 유지
   }
   if (lock) return;
@@ -1762,7 +1809,7 @@ ${who}, 안녕하십니까.
 
 function paneTeams() {
   const fcell = t => { const f = fileOf(t.team_no);
-    return `<div class="fline"><span class="fst" id="fs${t.team_no}" ${f ? `title="${h(f.name)} (${fsize(f.size)}, ${new Date(f.uploaded_at).toLocaleString('ko-KR')})"` : ''}>${f ? `<b>${h(f.name)}</b> <span class="muted">${fsize(f.size)}</span>` : '<span class="muted">미등록</span>'}</span>
+    return `<div class="fline"><span class="fst" id="fs${t.team_no}" ${f ? `title="${h(f.name)} (${f.pages ? f.pages + '쪽, ' : ''}${fsize(f.size)}, ${new Date(f.uploaded_at).toLocaleString('ko-KR')})"` : ''}>${f ? `${f.pages ? `<span class="${f.pages > PDF_LIMIT ? 'pgbad' : 'muted'}">${f.pages}쪽</span>` : '<span class="muted">…</span>'} <b>${h(f.name)}</b>` : '<span class="muted">미등록</span>'}</span>
         <label class="btn xs ${f ? '' : 'pri'}">${f ? '교체' : '올리기'}<input type="file" accept="application/pdf,.pdf" class="fu" data-t="${t.team_no}" hidden></label>
         ${f ? `<button class="btn xs fv" data-t="${t.team_no}">보기</button><button class="btn xs danger fd" data-t="${t.team_no}">삭제</button>` : ''}</div>`; };
   const zcell = t => { const f = zipOf(t.team_no);
@@ -1816,6 +1863,7 @@ function paneTeams() {
     }
     if (await adminDo('set_team', args)) { renderAdmin(); toast(v === 'clear' ? '로그인 방식 설정을 지웠습니다.' : '로그인 방식을 저장했습니다.'); }
   }
+  ensurePages();
   document.querySelectorAll('.ac').forEach(b => b.onclick = () => acctDialog(D.teams.find(x => x.team_no === +b.dataset.t)));
   document.querySelectorAll('.ts').forEach(b => b.onclick = async () => {
     const tr = b.closest('tr'), t = D.teams.find(x => x.team_no === +tr.dataset.t), args = { team_no:t.team_no, report_url:t.report_url };
@@ -1834,6 +1882,7 @@ function paneTeams() {
     document.querySelectorAll('.fu,.fv,.fd').forEach(x => x.disabled = true);
     try {
       await uploadPdf(t, file, (i, n) => { st.innerHTML = `<b>올리는 중 ${Math.round(i / n * 100)}%</b>`; });
+      await rpc('jd_file_pages', { p_code:S.code, p_team:t, p_pages:0 }).catch(() => {});   // 이전 쪽수 지움(새로 셈)
       await adminDo('load'); toast(t + '번 결과보고서를 올렸습니다.');
     } catch (e) { toast(e.message); }
     renderAdmin();
