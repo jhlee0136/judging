@@ -438,6 +438,11 @@ textarea.inp.guide-text{min-height:380px;font-size:13.5px;line-height:1.6;white-
 .matcnt{align-self:center;margin-left:auto;font-size:13px;color:var(--sub)}
 .mchips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .mc{font-style:normal;font-size:12px;padding:0 7px;border-radius:3px;border:1px dashed var(--rule);color:var(--mute);line-height:1.6}
+.team.nosub{cursor:default;opacity:.62;background:repeating-linear-gradient(135deg,transparent 0 9px,rgba(0,0,0,.025) 9px 18px)}
+.team.nosub:hover{background:repeating-linear-gradient(135deg,transparent 0 9px,rgba(0,0,0,.025) 9px 18px)}
+.team.nosub .no,.team.nosub .t{text-decoration:line-through;text-decoration-color:#B8625A}
+.matt tr.nosubrow td{background:#FBF1EF}
+.nosubnote{border-color:#E3B1AA;background:#FBF1EF}
 .mc.warn{border:1px solid #D9A36A;background:#FBEBDD;color:#8A3A12;font-weight:600}
 .pgwarn{align-self:center;margin-left:4px;padding:1px 8px;border:1px solid #D9A36A;border-radius:3px;background:#FBEBDD;color:#8A3A12;font-size:12.5px;font-weight:600;white-space:nowrap}
 .pgnote{padding:7px 12px;background:#FBEBDD;border-bottom:1px solid #E3B58C;font-size:13px;color:#6B2E0E;line-height:1.6}
@@ -730,6 +735,7 @@ const Mock = (() => {
     else if (fn === 'jd_html_get') out = !auth(db, a.p_judge, a.p_code) ? err('다시 로그인해 주세요.') : HTMLS[a.p_team]?.complete ? { data:HTMLS[a.p_team].parts[a.p_idx] } : err('등록된 시제품 HTML 파일이 없습니다.');
     else if (fn === 'jd_html_del') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (delete HTMLS[a.p_team], { ok:true });
     else if (fn === 'jd_file_pages') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (FILES[a.p_team] && (FILES[a.p_team].pages = a.p_pages > 0 ? a.p_pages : null), { ok:true });
+    else if (fn === 'jd_set_nosub') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mNosub(db, a);
     else if (fn === 'jd_zip_put') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mPutZip(a);
     else if (fn === 'jd_zip_get') out = !auth(db, a.p_judge, a.p_code) ? err('다시 로그인해 주세요.') : ZIPS[a.p_team]?.complete ? { data:ZIPS[a.p_team].parts[a.p_idx] } : err('등록된 시제품 ZIP 파일이 없습니다.');
     else if (fn === 'jd_zip_del') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (delete ZIPS[a.p_team], { ok:true });
@@ -755,7 +761,7 @@ const Mock = (() => {
     if (no === 0 || !auth(db, no, a.p_code)) return err('다시 로그인해 주세요.');
     if (db.sent.some(x => x.judge_no === no)) return err('이미 결과를 전송했습니다.');
     const full = s => s && s.items.length === 8 && s.items.every(v => v != null);
-    const miss = db.teams.filter(t => !db.recuse.some(r => r.judge_no === no && r.team_no === t.team_no)
+    const miss = db.teams.filter(t => !t.nosub && !db.recuse.some(r => r.judge_no === no && r.team_no === t.team_no)
       && !full(db.scores.find(s => s.judge_no === no && s.team_no === t.team_no))).length;
     if (miss) return err('평가를 마치지 않은 팀이 ' + miss + '개 있습니다.');
     db.scores.forEach(s => { if (s.judge_no === no) s.submitted = true; });
@@ -770,6 +776,12 @@ const Mock = (() => {
     const f = FILES[a.p_team]; f.parts[a.p_idx] = a.p_data;
     if (a.p_idx === a.p_total - 1) f.complete = f.parts.filter(Boolean).length === a.p_total;
     return { ok:true };
+  }
+  function mNosub(db, a) {
+    const t = db.teams.find(x => x.team_no === a.p_team); if (!t) return err('평가팀이 없습니다.');
+    if (db.closed) return err('심사가 마감되었습니다. 마감을 해제한 뒤 변경해 주세요.');
+    if (!a.p_nosub && db.sent.length) return err('이미 결과를 전송한 위원이 있어 미제출을 해제할 수 없습니다. 위원의 ‘전송 취소’ 후 해제해 주세요.');
+    t.nosub = !!a.p_nosub; return { ok:true };
   }
   function mPutZip(a) {
     if (a.p_total > 50) return err('ZIP 파일은 50MB 이하여야 합니다.');
@@ -802,6 +814,7 @@ const Mock = (() => {
     if (db.closed) return err('심사가 마감되어 저장할 수 없습니다.');
     if (db.sent.some(x => x.judge_no === no)) return err('결과를 전송해 수정할 수 없습니다. 수정이 필요하면 사업통합관리팀(2453)에 요청하세요.');
     if (db.recuse.some(r => r.judge_no === no && r.team_no === a.p_team)) return err('회피 대상 평가팀입니다.');
+    if (db.teams.find(t => t.team_no === a.p_team)?.nosub) return err('미제출 처리된 사례는 평가하지 않습니다.');
     for (let i = 0; i < 8; i++) {
       const v = a.p_items[i];
       if (v != null && !RT.map(r => MAX[i] * r).includes(v)) return err((i + 1) + '번 항목 점수가 등급 점수가 아닙니다.');
@@ -908,6 +921,34 @@ async function countPages(team) {
   const r = await loadPdf(team), buf = await fetch(r.url).then(x => x.arrayBuffer()), lib = await loadPdfJs();
   const doc = await lib.getDocument({ data:buf }).promise, n = doc.numPages; doc.destroy(); return n;
 }
+// 5쪽을 넘는 쪽은 열람용 사본에서 연한 주황 음영(곱하기 합성)과 왼쪽 띠로 구분. 원본·다운로드 파일은 그대로
+let pdfLibP = null;
+function loadPdfLib() {
+  return pdfLibP || (pdfLibP = new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+    sc.onload = () => res(window.PDFLib); sc.onerror = () => rej(new Error('PDF 도구를 불러오지 못했습니다.'));
+    document.head.appendChild(sc);
+  }));
+}
+const tintCache = {};
+async function loadPdfView(team, onProg) {
+  const f = fileOf(team), base = await loadPdf(team, onProg);
+  if (!pgOver(f)) return { ...base, orig:base.url };
+  const key = team + '|' + f.uploaded_at;
+  if (tintCache[key]) return tintCache[key];
+  try {
+    const lib = await loadPdfLib(), { rgb, BlendMode } = lib;
+    const doc = await lib.PDFDocument.load(await fetch(base.url).then(r => r.arrayBuffer()), { ignoreEncryption:true, updateMetadata:false });
+    doc.getPages().forEach((pg, i) => {
+      if (i < PDF_LIMIT) return;
+      const m = pg.getMediaBox();
+      pg.drawRectangle({ x:m.x, y:m.y, width:m.width, height:m.height, color:rgb(0.96, 0.62, 0.2), opacity:0.17, blendMode:BlendMode.Multiply });
+      pg.drawRectangle({ x:m.x, y:m.y, width:Math.min(16, m.width * .035), height:m.height, color:rgb(0.85, 0.38, 0.05), opacity:0.7 });
+    });
+    const out = await doc.save();
+    return tintCache[key] = { url:URL.createObjectURL(new Blob([out], { type:'application/pdf' })), name:base.name, orig:base.url };
+  } catch { return { ...base, orig:base.url }; }       // 표시를 못 만들면 원본 그대로 보여 줌
+}
 const pgTried = new Set();
 async function ensurePages() {
   if (!isAdmin()) return;
@@ -1006,8 +1047,22 @@ let viewerOn = false, adminTab = 'judges', openDet = new Set(), timer = null;
 const isAdmin = () => S && S.no === 0;
 const go = hash => { location.hash = hash; };
 
+// 미제출 사례는 심사 대상에서 뺌: teams·scores·recuse에서 걸러 내므로 진행 현황·결과·순위·Z점수(위원별 평균·표준편차)에 전혀 반영되지 않음
+// 전체 사례는 D.allTeams, 미제출 사례는 D.nosubTeams에 남겨 화면에 '미제출'로 표시
+async function rawScores(team) {
+  try { const r = await rpc('jd_admin', { p_code:S.code, p_action:'load', p_args:{} }); return (r.scores || []).filter(x => x.team_no === team).length; } catch { return 0; }
+}
+function normD(d) {
+  if (!d || d._n === d.teams) return d;
+  const all = d.teams || [], ns = new Set(all.filter(t => t.nosub).map(t => t.team_no));
+  d.allTeams = all; d.nosubTeams = all.filter(t => t.nosub);
+  d.teams = all.filter(t => !t.nosub);
+  d.scores = (d.scores || []).filter(x => !ns.has(x.team_no));
+  if (d.recuse) d.recuse = d.recuse.filter(r => !ns.has(r.team_no));
+  d._n = d.teams; return d;
+}
 async function login(no, code) {
-  D = no === 0 ? await rpc('jd_admin', { p_code:code, p_action:'load', p_args:{} }) : await rpc('jd_login', { p_judge:no, p_code:code });
+  D = normD(no === 0 ? await rpc('jd_admin', { p_code:code, p_action:'load', p_args:{} }) : await rpc('jd_login', { p_judge:no, p_code:code }));
   S = { no, code }; store.set('jd_sess', S);
 }
 function logout() {
@@ -1138,7 +1193,7 @@ function statusBadge(s) {
 function renderHome() {
   renderTop();
   const done = D.teams.filter(t => isFull(myScore(t.team_no))).length, n = D.teams.length, sent = sentAt(S.no);
-  const fields = [...new Set(D.teams.map(t => t.field))];
+  const fields = [...new Set(D.allTeams.map(t => t.field))];
   $('#app').innerHTML = `<div class="wrap">
     <div class="pagehead">
       <div><h1>평가팀 목록</h1><div class="muted">사례를 눌러 평가표를 작성하세요. ${D.closed ? '<span class="badge b-bad">심사 마감</span>' : ''}</div></div>
@@ -1147,6 +1202,7 @@ function renderHome() {
           return `<a class="tk tk-${st}" href="#/team/${t.team_no}" title="${t.team_no}번 ${({ none:'미평가', draft:'작성 중', full:'평가 완료', sent:'전송됨' })[st]}">${t.team_no}</a>`; }).join('')}</div>
         <div class="tk-leg tiny muted"><span><i class="tk-full"></i>평가 완료</span><span><i class="tk-draft"></i>작성 중</span><span><i class="tk-none"></i>미평가</span></div></div>
     </div>
+    ${D.nosubTeams.length ? `<div class="note nosubnote"><b>미제출 사례 ${D.nosubTeams.length}건</b> · ${D.nosubTeams.map(t => t.team_no + '번').join(', ')}은(는) 참가자가 결과물을 제출하지 않아 심사 대상에서 제외되었습니다. 평가하지 않으며, 결과 전송에도 필요하지 않습니다.</div>` : ''}
     <div class="note"><b>심사 시 유의사항</b><ul>
       <li>실행링크 접속에 문제가 있으면 즉시 감점하지 말고 첨부된 시연 영상으로 기능 실체를 먼저 확인합니다.</li>
       <li>최고 배점(20점)인 ‘문제 해결 및 목적 달성도’는 결과보고서 기획 내용과 시제품 작동 모습이 부합하는지 엄격히 점검합니다.</li>
@@ -1158,8 +1214,11 @@ function renderHome() {
         : `<div><b>결과 전송</b><div class="muted tiny">${done < n ? `평가를 마치지 않은 팀이 ${n - done}개 있습니다. 모든 팀을 평가하면 전송할 수 있습니다.` : '모든 팀 평가를 마쳤습니다. 점수를 확인한 뒤 전송하세요. 전송 후에는 수정할 수 없습니다.'}</div></div>
            <button class="btn pri" id="send" ${done < n || D.closed ? 'disabled' : ''}>결과 전송</button>`}
     </div>
-    ${fields.map(fd => `<div class="grp">${h(fd)} <span class="badge">${D.teams.filter(t => t.field === fd).length}개 사례</span></div>
-      <div class="teams">${D.teams.filter(t => t.field === fd).map(t => { const s = myScore(t.team_no);
+    ${fields.map(fd => `<div class="grp">${h(fd)} <span class="badge">${D.teams.filter(t => t.field === fd).length}개 사례</span>${D.nosubTeams.some(t => t.field === fd) ? ` <span class="badge b-bad">미제출 ${D.nosubTeams.filter(t => t.field === fd).length}</span>` : ''}</div>
+      <div class="teams">${D.allTeams.filter(t => t.field === fd).map(t => { const s = myScore(t.team_no);
+        if (t.nosub) return `<div class="team nosub" aria-disabled="true"><span class="no">${t.team_no}</span>
+          <span class="tx"><span class="th">${h(t.theme)}</span><span class="t" style="display:block">${h(t.title)}</span><span class="tiny muted">참가자가 결과물을 제출하지 않아 평가하지 않습니다.</span></span>
+          <span class="badge b-bad">미제출</span><span class="score"></span></div>`;
         return `<div class="team" tabindex="0" role="link" data-t="${t.team_no}">
           <span class="no">${t.team_no}</span>
           <span class="tx"><span class="th">${h(t.theme)}</span><span class="t" style="display:block">${h(t.title)}</span>
@@ -1173,10 +1232,10 @@ function renderHome() {
     if (!await modal('결과를 전송할까요?', `<p class="muted" style="margin-top:0">전송하면 점수가 확정되어 더 이상 수정할 수 없습니다.</p>
       <div class="tbl-wrap" style="max-height:45vh;overflow:auto"><table class="t"><thead><tr><th>번호</th><th>사례명</th><th class="n">총점</th></tr></thead><tbody>${rows}</tbody></table></div>`,
       [{ label:'취소', value:false }, { label:'전송', value:true, cls:'pri' }])) return;
-    try { D = Object.assign(D, await rpc('jd_send', { p_judge:S.no, p_code:S.code })); toast('결과를 전송했습니다. 수고하셨습니다.'); renderHome(); }
+    try { D = normD(Object.assign(D, await rpc('jd_send', { p_judge:S.no, p_code:S.code }))); toast('결과를 전송했습니다. 수고하셨습니다.'); renderHome(); }
     catch (e) { toast(e.message); }
   };
-  document.querySelectorAll('.team').forEach(el => {
+  document.querySelectorAll('.team:not(.nosub)').forEach(el => {
     el.onclick = () => go('#/team/' + el.dataset.t);
     el.onkeydown = e => { if (e.key === 'Enter') go('#/team/' + el.dataset.t); };
   });
@@ -1209,7 +1268,7 @@ function renderTeam(no) {
     <aside class="card viewer" id="vw" hidden>
       <div class="vbar"><b>결과보고서</b><span class="muted tiny" id="vn"></span><span class="sp"></span>
         <a class="btn sm" id="vo" target="_blank" rel="noopener" hidden>새 창에서 보기</a><a class="btn sm pri" id="vd" hidden>다운로드</a><button type="button" class="btn sm" id="vx">닫기</button></div>
-      ${pgOver(pdf) ? `<div class="pgnote"><b>분량 기준 초과</b> 결과보고서는 ${PDF_LIMIT}쪽 이내로 작성하도록 안내되었으나, 이 보고서는 <b>${pdf.pages}쪽</b>입니다(${pdf.pages - PDF_LIMIT}쪽 초과). <button type="button" class="btn xs" id="pgx">${PDF_LIMIT + 1}쪽부터 보기</button></div>` : ''}
+      ${pgOver(pdf) ? `<div class="pgnote"><b>분량 기준 초과</b> 결과보고서는 ${PDF_LIMIT}쪽 이내로 작성하도록 안내되었으나, 이 보고서는 <b>${pdf.pages}쪽</b>입니다(${pdf.pages - PDF_LIMIT}쪽 초과). ${PDF_LIMIT + 1}쪽부터는 연한 주황색 음영과 왼쪽 띠로 구분해 보여 줍니다(내려받은 파일에는 표시가 없습니다). <button type="button" class="btn xs" id="pgx">${PDF_LIMIT + 1}쪽부터 보기</button></div>` : ''}
       <div id="vb" class="vbody"></div>
     </aside>
     <div class="tform">
@@ -1285,9 +1344,9 @@ function renderTeam(no) {
       if (box.dataset.ok) return;
       $('#vb').innerHTML = '<div class="spin" id="vp">불러오는 중…</div>';
       try {
-        const r = await loadPdf(no, (i, n) => { const el = $('#vp'); if (el) el.textContent = `불러오는 중… ${Math.round(i / n * 100)}%`; });
+        const r = await loadPdfView(no, (i, n) => { const el = $('#vp'); if (el) el.textContent = `불러오는 중… ${Math.round(i / n * 100)}%`; });
         $('#vb').innerHTML = `<iframe src="${r.url}#navpanes=0&view=FitH" title="결과보고서"></iframe><div class="tiny muted vnote" style="padding:8px 12px">화면에 보이지 않으면(휴대폰 등) ‘다운로드’ 또는 ‘새 창에서 보기’를 누르세요.</div>`;
-        Object.assign($('#vd'), { href:r.url, download:r.name, hidden:false });
+        Object.assign($('#vd'), { href:r.orig || r.url, download:r.name, hidden:false });
         Object.assign($('#vo'), { href:r.url, hidden:false });
         box.dataset.ok = 1;
       } catch (e) { $('#vb').innerHTML = `<div class="spin">${h(e.message)}</div>`; }
@@ -1296,7 +1355,7 @@ function renderTeam(no) {
     if ($('#pgx')) $('#pgx').onclick = async () => {
       if (box0().hidden) $('#rv').click();
       for (let k = 0; k < 100 && !$('#vb iframe'); k++) await new Promise(r => setTimeout(r, 100));
-      try { const r = await loadPdf(no), old = $('#vb iframe'); if (!old) return;
+      try { const r = await loadPdfView(no), old = $('#vb iframe'); if (!old) return;
         const fr = document.createElement('iframe'); fr.title = '결과보고서'; fr.src = `${r.url}#page=${PDF_LIMIT + 1}&navpanes=0&view=FitH`; old.replaceWith(fr); } catch (e) { toast(e.message); }
     };
     if (viewerOn) $('#rv').click();          // 다른 팀으로 넘어가도 보던 방식 유지
@@ -1311,7 +1370,7 @@ function renderTeam(no) {
     const miss = form.items.map((v, i) => v == null ? i : -1).filter(i => i >= 0);
     $('#sv').disabled = true;
     try {
-      D = Object.assign(D, await rpc('jd_save', { p_judge:S.no, p_code:S.code, p_team:no, p_items:form.items, p_comment:form.comment, p_submit:false }));
+      D = normD(Object.assign(D, await rpc('jd_save', { p_judge:S.no, p_code:S.code, p_team:no, p_items:form.items, p_comment:form.comment, p_submit:false })));
       form.dirty = false;
       if (miss.length) {
         renderTeam(no); miss.forEach(i => $('#it' + i).classList.add('miss'));
@@ -1393,7 +1452,7 @@ function compute() {
 /* ===== 관리자 ===== */
 async function adminDo(action, args = {}) {
   if (!isAdmin()) return null;                 // 관리자 세션이 아니면 관리자 요청을 보내지 않음
-  try { D = await rpc('jd_admin', { p_code:S.code, p_action:action, p_args:args }); return D; }
+  try { D = normD(await rpc('jd_admin', { p_code:S.code, p_action:action, p_args:args })); return D; }
   catch (e) { if (!AUTH_FAIL.test(e.message)) toast(e.message); return null; }
 }
 const jname = no => D.judges.find(j => j.no === no)?.name || '심사위원 ' + no;
@@ -1508,6 +1567,7 @@ function paneResult() {
       <div class="card kpi"><b>${elig}</b><span class="muted tiny">시상 가능 (원점수 평균 ${CUT}점 이상${excN ? ` · 관리자 제외 ${excN}` : ''})</span></div>
       <div class="card kpi"><b>${C.complete ? '확정 가능' : '잠정'}</b><span class="muted tiny">${C.complete ? '모든 위원이 결과를 전송함' : '전송하지 않은 위원이 있어 Z점수가 바뀔 수 있음'}</span></div>
     </div>
+    ${D.nosubTeams.length ? `<div class="note nosubnote"><b>미제출 사례 ${D.nosubTeams.length}건</b> · ${D.nosubTeams.map(t => `${t.team_no}번 ${h(t.title)}`).join(' / ')} — 심사 대상에서 제외되어 순위·시상·Z점수 계산에 반영되지 않았습니다.</div>` : ''}
     ${printHead(C)}
     ${awardSummary(C)}
     <div class="toolbar" style="margin-top:16px"><span class="muted tiny">순위 = Z점수(최고·최저 제외 평균) 내림차순 · 동점이면 원점수 평균, 문항 3 평균 순 · 행을 누르면 위원별 상세 · ‘제외’로 시상에서 뺄 수 있음</span><span class="sp"></span>
@@ -1665,6 +1725,7 @@ function paneProgress() {
     return `<span class="badge b-ok">${raw}</span><div class="tiny muted" style="margin-top:3px">Z ${z}</div>`;
   };
   $('#pane').innerHTML = `
+    ${D.nosubTeams.length ? `<div class="note nosubnote"><b>미제출 사례 ${D.nosubTeams.length}건</b> · ${D.nosubTeams.map(t => t.team_no + '번').join(', ')}은(는) 표에서 빠져 있으며 심사 대상이 아닙니다(‘평가자료 등록’에서 해제 가능).</div>` : ''}
     <div class="toolbar"><span class="muted tiny">작성 중 → 완료(전송 전, 위원이 수정 가능) → 전송된 칸은 원점수와 Z점수를 표시합니다(취소선 = 최고·최저로 제외). 전송된 점수만 결과·순위에 반영됩니다. 칸을 누르면 점수 삭제·회피 지정을 할 수 있습니다. 30초마다 자동 갱신됩니다.</span></div>
     <div class="tbl-wrap"><table class="t mx compact">
       <thead><tr><th>평가팀</th>${D.judges.map(j => `<th class="c" title="${h(j.name)}">${jhead(j.name)}</th>`).join('')}<th class="c">전송</th><th class="n">원점수 평균</th><th class="n">Z점수 평균</th></tr></thead>
@@ -1801,6 +1862,7 @@ ${who}, 안녕하십니까.
     - 해당 줄이 없는 사례는 사업통합관리팀에 문의해 주십시오.
  3. 8개 평가요소마다 S~E 등급을 고른 뒤 '저장'합니다. 저장한 평가는 결과 전송 전까지 언제든 고칠 수 있습니다.
  4. ${n}개 사례를 모두 평가한 뒤 목록 화면의 '결과 전송'을 누르면 점수가 확정됩니다.
+ ※ 결과물을 제출하지 않은 사례는 목록에 ‘미제출’로 표시되며 평가 대상이 아닙니다(결과 전송에도 필요하지 않습니다).
  ※ 공정한 심사를 위해 참가자의 소속·성명은 표시되지 않습니다(블라인드 심사).
  ※ 결과보고서를 보면서 평가하기 좋도록 PC 사용을 권장합니다.
 
@@ -1823,8 +1885,8 @@ function paneTeams() {
   $('#pane').innerHTML = `
     <div class="note">결과보고서는 PDF 파일(50MB 이하)로 올리면 심사위원이 평가표 화면에서 바로 보고 내려받을 수 있습니다. 시제품 실행링크·시연 영상 주소는 입력 후 저장하면 평가표에서 새 창으로 열립니다. 시제품은 <b>실행링크 · HTML 파일 · ZIP 파일</b> 중 하나 이상 올리면 등록된 것으로 봅니다(여러 개도 가능). <b>HTML 파일(20MB 이하, 파일 하나로 된 것)</b>을 올리면 심사위원이 ‘시제품 실행’을 눌러 새 창에서 바로 구동해 볼 수 있습니다(이미지·스타일·스크립트가 모두 한 파일에 포함되어야 하며, 로그인·서버 연동 기능은 제출자 설계에 따라 동작합니다). <b>ZIP 파일(50MB 이하)</b>은 심사위원이 내려받아 직접 실행해 볼 수 있는 시제품입니다. 시제품 로그인 방식은 사례마다 ‘시제품 계정’에서 꼭 설정해 주세요(계정 입력 필요 / 시연용 바로 로그인 제공 / 로그인 불필요). 설정한 내용이 평가표 자료 아래에 표시되어, 계정이 없는 이유를 심사위원이 오해하지 않습니다. ${D.teams.some(t => !acctMode(t)) ? `<span class="badge b-warn">접속 방식 미설정 ${D.teams.filter(t => !acctMode(t)).length}건</span>` : ''}</div>
     <div class="tbl-wrap"><table class="t compact matt">
-      <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>HTML 파일</th><th>ZIP 파일</th><th>시연 영상</th><th>시제품 계정</th><th>링크</th></tr></thead>
-      <tbody>${D.teams.map(t => `<tr data-t="${t.team_no}"><td>${t.team_no}</td><td class="l nowrap" title="${h(t.title)}">${h(t.title)}</td>
+      <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>HTML 파일</th><th>ZIP 파일</th><th>시연 영상</th><th>시제품 계정</th><th>저장 · 미제출</th></tr></thead>
+      <tbody>${D.allTeams.map(t => `<tr data-t="${t.team_no}" class="${t.nosub ? 'nosubrow' : ''}"><td>${t.team_no}</td><td class="l nowrap" title="${h(t.title)}">${t.nosub ? '<span class="badge b-bad">미제출</span> ' : ''}${h(t.title)}</td>
         <td class="l">${fcell(t)}</td>
         <td><input class="inp" data-k="demo_url" value="${h(t.demo_url)}" placeholder="https://"></td>
         <td class="l">${hcell(t)}</td>
@@ -1833,7 +1895,7 @@ function paneTeams() {
         <td class="l"><div class="fline">${acctMode(t) === 'account' ? `<span class="fst" title="아이디: ${h(t.demo_id) || '(없음)'}"><span class="badge b-ok">계정 필요</span></span>`
             : acctMode(t) ? `<span class="fst" title="${MODE_LABEL[acctMode(t)]}"><span class="badge b-ok">${MODE_CHIP[acctMode(t)]}</span></span>` : '<span class="badge b-warn">미설정</span>'}
           <button class="btn xs ${acctMode(t) ? '' : 'pri'} ac" data-t="${t.team_no}">${acctMode(t) ? '수정' : '설정'}</button></div></td>
-        <td><button class="btn xs ts">저장</button></td></tr>`).join('')}</tbody></table></div>`;
+        <td><div class="fline"><button class="btn xs ts">저장</button><button class="btn xs ${t.nosub ? 'pri' : 'danger'} ns" data-t="${t.team_no}" title="${t.nosub ? '미제출 처리를 해제합니다' : '참가자가 결과물을 제출하지 않은 사례로 처리합니다'}">${t.nosub ? '해제' : '미제출'}</button></div></td></tr>`).join('')}</tbody></table></div>`;
   // 시제품 로그인 방식 입력 창. 입력이 맞지 않으면 쓴 값을 채운 채로 창을 다시 엶
   async function acctDialog(t, pre) {
     const v0 = pre || { mode:acctMode(t), id:t.demo_id || '', pw:t.demo_pw || '', note:t.demo_note || '' };
@@ -1864,9 +1926,19 @@ function paneTeams() {
     if (await adminDo('set_team', args)) { renderAdmin(); toast(v === 'clear' ? '로그인 방식 설정을 지웠습니다.' : '로그인 방식을 저장했습니다.'); }
   }
   ensurePages();
-  document.querySelectorAll('.ac').forEach(b => b.onclick = () => acctDialog(D.teams.find(x => x.team_no === +b.dataset.t)));
+  document.querySelectorAll('.ns').forEach(b => b.onclick = async () => {
+    const t = +b.dataset.t, team = D.allTeams.find(x => x.team_no === t), on = !team.nosub;
+    const nScore = (await rawScores(t));
+    const ok = await confirmBox(on ? '미제출 처리' : '미제출 해제',
+      on ? `<b>${t}번</b> ${h(team.title)}을(를) <b>미제출</b>로 처리합니다.<ul style="margin:8px 0 0 18px;padding:0"><li>심사위원 화면에 ‘미제출’로 표시되고 평가할 수 없습니다.</li><li>결과 전송에 필요한 사례에서도 빠집니다.</li><li>진행 현황·순위·시상·Z점수 계산에서 완전히 제외됩니다(위원별 평균·표준편차 계산에도 쓰이지 않음).</li>${nScore ? `<li>이미 입력된 점수 ${nScore}건은 삭제되지 않고 계산에서만 빠집니다.</li>` : ''}</ul>`
+         : `<b>${t}번</b> ${h(team.title)}의 미제출 처리를 해제합니다. 다시 심사 대상이 되며 위원이 평가할 수 있습니다.`, on ? '미제출 처리' : '해제', on ? 'danger' : '');
+    if (!ok) return;
+    try { await rpc('jd_set_nosub', { p_code:S.code, p_team:t, p_nosub:on }); await adminDo('load'); renderAdmin(); toast(on ? t + '번 사례를 미제출로 처리했습니다.' : t + '번 사례의 미제출 처리를 해제했습니다.'); }
+    catch (e) { toast(e.message); }
+  });
+  document.querySelectorAll('.ac').forEach(b => b.onclick = () => acctDialog(D.allTeams.find(x => x.team_no === +b.dataset.t)));
   document.querySelectorAll('.ts').forEach(b => b.onclick = async () => {
-    const tr = b.closest('tr'), t = D.teams.find(x => x.team_no === +tr.dataset.t), args = { team_no:t.team_no, report_url:t.report_url };
+    const tr = b.closest('tr'), t = D.allTeams.find(x => x.team_no === +tr.dataset.t), args = { team_no:t.team_no, report_url:t.report_url };
     for (const i of tr.querySelectorAll('input.inp')) {
       const v = i.value.trim();
       if (v && !/^https?:\/\//i.test(v)) return toast('주소는 http:// 또는 https://로 시작해야 합니다.');
