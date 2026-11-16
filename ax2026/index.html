@@ -943,7 +943,13 @@ async function loadPdfView(team, onProg) {
       if (i < PDF_LIMIT) return;
       const m = pg.getMediaBox();
       pg.drawRectangle({ x:m.x, y:m.y, width:m.width, height:m.height, color:rgb(0.96, 0.62, 0.2), opacity:0.17, blendMode:BlendMode.Multiply });
-      pg.drawRectangle({ x:m.x, y:m.y, width:Math.min(16, m.width * .035), height:m.height, color:rgb(0.85, 0.38, 0.05), opacity:0.7 });
+      // 엑셀의 빗금 채우기처럼 45° 사선(쪽 안쪽으로만 그림)
+      const W = m.width, H = m.height, gap = 12, hc = rgb(0.9, 0.45, 0.08);
+      for (let k = -H; k < W; k += gap) {
+        const t0 = Math.max(0, -k), t1 = Math.min(H, W - k);
+        if (t1 - t0 > 1) pg.drawLine({ start:{ x:m.x + k + t0, y:m.y + t0 }, end:{ x:m.x + k + t1, y:m.y + t1 }, thickness:0.7, color:hc, opacity:0.4, blendMode:BlendMode.Multiply });
+      }
+      pg.drawRectangle({ x:m.x, y:m.y, width:Math.min(16, W * .035), height:H, color:rgb(0.85, 0.38, 0.05), opacity:0.7 });
     });
     const out = await doc.save();
     return tintCache[key] = { url:URL.createObjectURL(new Blob([out], { type:'application/pdf' })), name:base.name, orig:base.url };
@@ -1268,7 +1274,7 @@ function renderTeam(no) {
     <aside class="card viewer" id="vw" hidden>
       <div class="vbar"><b>결과보고서</b><span class="muted tiny" id="vn"></span><span class="sp"></span>
         <a class="btn sm" id="vo" target="_blank" rel="noopener" hidden>새 창에서 보기</a><a class="btn sm pri" id="vd" hidden>다운로드</a><button type="button" class="btn sm" id="vx">닫기</button></div>
-      ${pgOver(pdf) ? `<div class="pgnote"><b>분량 기준 초과</b> 결과보고서는 ${PDF_LIMIT}쪽 이내로 작성하도록 안내되었으나, 이 보고서는 <b>${pdf.pages}쪽</b>입니다(${pdf.pages - PDF_LIMIT}쪽 초과). ${PDF_LIMIT + 1}쪽부터는 연한 주황색 음영과 왼쪽 띠로 구분해 보여 줍니다(내려받은 파일에는 표시가 없습니다). <button type="button" class="btn xs" id="pgx">${PDF_LIMIT + 1}쪽부터 보기</button></div>` : ''}
+      ${pgOver(pdf) ? `<div class="pgnote"><b>분량 기준 초과</b> 결과보고서는 ${PDF_LIMIT}쪽 이내로 작성하도록 안내되었으나, 이 보고서는 <b>${pdf.pages}쪽</b>입니다(${pdf.pages - PDF_LIMIT}쪽 초과). ${PDF_LIMIT + 1}쪽부터는 연한 주황색 음영과 사선(빗금)·왼쪽 띠로 구분해 보여 줍니다(내려받은 파일에는 표시가 없습니다). <button type="button" class="btn xs" id="pgx">${PDF_LIMIT + 1}쪽부터 보기</button></div>` : ''}
       <div id="vb" class="vbody"></div>
     </aside>
     <div class="tform">
@@ -1852,6 +1858,8 @@ ${who}, 안녕하십니까.
 
 ■ 심사 방법
  1. 평가팀 목록에서 사례를 눌러 결과보고서(PDF), 시제품, 시연 영상을 확인합니다.
+    - 결과보고서는 5쪽 이내로 작성하도록 안내되었습니다. 5쪽을 넘는 보고서는 6쪽부터 주황색 음영과 사선(빗금)으로 표시되며, 분량 초과 사실을 참고하여 평가해 주십시오.
+    - 결과물을 제출하지 않은 사례는 목록에 ‘미제출’로 표시되고 열람·평가할 수 없습니다.
  2. 시제품은 사례마다 다음 중 하나 이상으로 제출됩니다(평가표 자료 줄에 등록된 것만 표시됩니다).
     - 시제품 실행링크 / 시제품 실행(HTML 파일): 눌러서 새 창에서 바로 실행합니다.
     - 시제품 다운로드(ZIP): 내려받아 압축을 풀고 안내에 따라 PC에서 실행합니다(제출자가 만든 파일이므로 실행 전 보안 프로그램으로 검사하시기 바랍니다).
@@ -1862,7 +1870,7 @@ ${who}, 안녕하십니까.
     - 해당 줄이 없는 사례는 사업통합관리팀에 문의해 주십시오.
  3. 8개 평가요소마다 S~E 등급을 고른 뒤 '저장'합니다. 저장한 평가는 결과 전송 전까지 언제든 고칠 수 있습니다.
  4. ${n}개 사례를 모두 평가한 뒤 목록 화면의 '결과 전송'을 누르면 점수가 확정됩니다.
- ※ 결과물을 제출하지 않은 사례는 목록에 ‘미제출’로 표시되며 평가 대상이 아닙니다(결과 전송에도 필요하지 않습니다).
+ ※ ‘미제출’ 사례는 평가 대상이 아니며, 결과 전송 시 평가해야 할 사례 수(위 ${n}개)와 순위·Z점수 계산에서도 제외됩니다.
  ※ 공정한 심사를 위해 참가자의 소속·성명은 표시되지 않습니다(블라인드 심사).
  ※ 결과보고서를 보면서 평가하기 좋도록 PC 사용을 권장합니다.
 
