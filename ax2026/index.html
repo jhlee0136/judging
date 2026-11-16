@@ -457,8 +457,8 @@ textarea.inp.guide-text{min-height:380px;font-size:13.5px;line-height:1.6;white-
 .ropt small{display:block;color:var(--sub);font-size:12.5px;line-height:1.45}
 /* 평가자료 등록 표: 열 너비를 화면 폭에 맞춰 나눔(가로 스크롤 없이 한 화면) */
 table.t.matt{table-layout:fixed}
-.matt th:nth-child(1){width:3.5%} .matt th:nth-child(2){width:15%} .matt th:nth-child(3){width:21%} .matt th:nth-child(4){width:12%}
-.matt th:nth-child(5){width:15%} .matt th:nth-child(6){width:12%} .matt th:nth-child(7){width:14%} .matt th:nth-child(8){width:7.5%}
+.matt th:nth-child(1){width:3.5%} .matt th:nth-child(2){width:12%} .matt th:nth-child(3){width:15.5%} .matt th:nth-child(4){width:10%}
+.matt th:nth-child(5){width:14.5%} .matt th:nth-child(6){width:14.5%} .matt th:nth-child(7){width:10%} .matt th:nth-child(8){width:11%} .matt th:nth-child(9){width:9%}
 .matt td{overflow:hidden;white-space:nowrap}
 .matt td.nowrap{max-width:none}
 table.t.matt .inp{min-width:0;width:100%;padding:2px 6px;font-size:12px}
@@ -468,7 +468,7 @@ table.t.matt .inp{min-width:0;width:100%;padding:2px 6px;font-size:12px}
 .matt .badge{padding:1px 6px;font-size:11.5px;overflow:visible}
 .matt .hl .fst{flex:0 0 auto}
 .matt th,.matt td{padding:4px 4px}
-@media (max-width:900px){ table.t.matt{table-layout:auto;min-width:1000px} }
+@media (max-width:900px){ table.t.matt{table-layout:auto;min-width:1100px} }
 .printonly{display:none}
 .phead{margin-bottom:12px}
 .phead h1{font-size:18px;margin-bottom:6px}
@@ -691,7 +691,7 @@ const Mock = (() => {
     teams:TEAMS.map(([team_no,field,theme,title,kind,members]) => ({ team_no,field,theme,title,kind,members,report_url:'',demo_url:'',video_url:'',demo_mode:'',demo_id:'',demo_pw:'',demo_note:'' })),
   });
   const load = () => Object.assign({ excluded:[], sent:[] }, store.get('jd_demo', localStorage) || fresh());
-  const FILES = {}, HTMLS = {};         // 시연용 PDF·HTML은 새로고침하면 사라짐(메모리 보관)
+  const FILES = {}, HTMLS = {}, ZIPS = {};         // 시연용 PDF·HTML은 새로고침하면 사라짐(메모리 보관)
   const vis = (db, no, t) => no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === t);
   const save = db => store.set('jd_demo', db, localStorage);
   const norm = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -703,6 +703,8 @@ const Mock = (() => {
     scores: db.scores.filter(s => no === 0 || s.judge_no === no),
     htmls: Object.values(HTMLS).filter(f => f.complete && vis(db, no, f.team_no))
       .map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name: no === 0 ? name : `시제품_${team_no}번.html`, size, chunks, uploaded_at })),
+    zips: Object.values(ZIPS).filter(f => f.complete && vis(db, no, f.team_no))
+      .map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name: no === 0 ? name : `시제품_${team_no}번.zip`, size, chunks, uploaded_at })),
     files: Object.values(FILES).filter(f => f.complete && (no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === f.team_no)))
       .map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name: no === 0 ? name : `결과보고서_${team_no}번.pdf`, size, chunks, uploaded_at })),
     excluded: no === 0 ? db.excluded : [],
@@ -722,6 +724,9 @@ const Mock = (() => {
     else if (fn === 'jd_html_put') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mPutHtml(a);
     else if (fn === 'jd_html_get') out = !auth(db, a.p_judge, a.p_code) ? err('다시 로그인해 주세요.') : HTMLS[a.p_team]?.complete ? { data:HTMLS[a.p_team].parts[a.p_idx] } : err('등록된 시제품 HTML 파일이 없습니다.');
     else if (fn === 'jd_html_del') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (delete HTMLS[a.p_team], { ok:true });
+    else if (fn === 'jd_zip_put') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mPutZip(a);
+    else if (fn === 'jd_zip_get') out = !auth(db, a.p_judge, a.p_code) ? err('다시 로그인해 주세요.') : ZIPS[a.p_team]?.complete ? { data:ZIPS[a.p_team].parts[a.p_idx] } : err('등록된 시제품 ZIP 파일이 없습니다.');
+    else if (fn === 'jd_zip_del') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (delete ZIPS[a.p_team], { ok:true });
     else if (fn === 'jd_send') out = mSend(db, a);
     else if (fn === 'jd_unsend') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.')
       : (db.sent = db.sent.filter(x => x.judge_no !== a.p_judge), db.scores.forEach(s => { if (s.judge_no === a.p_judge) s.submitted = false; }), { ok:true });
@@ -757,6 +762,16 @@ const Mock = (() => {
       FILES[a.p_team] = { team_no:a.p_team, name:a.p_name, size:a.p_size, chunks:a.p_total, parts:[], complete:false, uploaded_at:new Date().toISOString() };
     }
     const f = FILES[a.p_team]; f.parts[a.p_idx] = a.p_data;
+    if (a.p_idx === a.p_total - 1) f.complete = f.parts.filter(Boolean).length === a.p_total;
+    return { ok:true };
+  }
+  function mPutZip(a) {
+    if (a.p_total > 50) return err('ZIP 파일은 50MB 이하여야 합니다.');
+    if (a.p_idx === 0) {
+      if (!atob(a.p_data.slice(0, 4)).startsWith('PK')) return err('ZIP 파일만 올릴 수 있습니다.');
+      ZIPS[a.p_team] = { team_no:a.p_team, name:a.p_name, size:a.p_size, chunks:a.p_total, parts:[], complete:false, uploaded_at:new Date().toISOString() };
+    }
+    const f = ZIPS[a.p_team]; f.parts[a.p_idx] = a.p_data;
     if (a.p_idx === a.p_total - 1) f.complete = f.parts.filter(Boolean).length === a.p_total;
     return { ok:true };
   }
@@ -881,6 +896,33 @@ async function uploadHtml(team, file, onProg) {
 // 저장소(localStorage 등)를 막는 격리 틀에서도 시제품이 멈추지 않도록 메모리 저장소로 대신함
 const HTML_SHIM = `<script>(function(){function mk(){var d={};return{getItem:function(k){return k in d?d[k]:null},setItem:function(k,v){d[k]=String(v)},removeItem:function(k){delete d[k]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}['localStorage','sessionStorage'].forEach(function(n){try{window[n].getItem('x')}catch(e){try{Object.defineProperty(window,n,{value:mk(),configurable:true})}catch(e2){}}})})();<\/script>`;
 const htmlCache = {};
+const ZIP_MAX = 50 * 1024 * 1024;
+const zipOf = t => (D?.zips || []).find(f => f.team_no === t);
+async function uploadZip(team, file, onProg) {
+  if (!/\.zip$/i.test(file.name)) throw new Error('ZIP 파일(.zip)만 올릴 수 있습니다.');
+  if (!file.size || file.size > ZIP_MAX) throw new Error('ZIP 파일은 50MB 이하여야 합니다.');
+  const total = Math.ceil(file.size / CHUNK);
+  for (let i = 0; i < total; i++) {
+    const data = await toB64(file.slice(i * CHUNK, (i + 1) * CHUNK));
+    await rpc('jd_zip_put', { p_code:S.code, p_team:team, p_idx:i, p_total:total, p_name:file.name, p_size:file.size, p_data:data });
+    onProg(i + 1, total);
+  }
+}
+const zipCache = {};
+async function downloadZip(team) {
+  const f = zipOf(team), key = team + '|' + f.uploaded_at;
+  if (!zipCache[key]) {
+    const parts = [];
+    for (let i = 0; i < f.chunks; i++) {
+      const r = await rpc('jd_zip_get', { p_judge:S.no, p_code:S.code, p_team:team, p_idx:i });
+      const bin = atob(r.data), u = new Uint8Array(bin.length);
+      for (let k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+      parts.push(u);
+    }
+    zipCache[key] = URL.createObjectURL(new Blob(parts, { type:'application/zip' }));
+  }
+  const a = Object.assign(document.createElement('a'), { href:zipCache[key], download:f.name }); document.body.appendChild(a); a.click(); a.remove();
+}
 async function loadHtml(team) {
   const f = htmlOf(team), key = team + '|' + f.uploaded_at;
   if (htmlCache[key]) return htmlCache[key];
@@ -1081,7 +1123,7 @@ function renderHome() {
         return `<div class="team" tabindex="0" role="link" data-t="${t.team_no}">
           <span class="no">${t.team_no}</span>
           <span class="tx"><span class="th">${h(t.theme)}</span><span class="t" style="display:block">${h(t.title)}</span>
-            <span class="mchips" aria-label="평가자료 등록 현황">${[['결과보고서', !!fileOf(t.team_no)], ['실행링크', !!t.demo_url || !!htmlOf(t.team_no)], ['시연영상', !!t.video_url], ...(acctMode(t) ? [[MODE_CHIP[acctMode(t)], true]] : [])].map(([n, on]) =>
+            <span class="mchips" aria-label="평가자료 등록 현황">${[['결과보고서', !!fileOf(t.team_no)], ['시제품', !!t.demo_url || !!htmlOf(t.team_no) || !!zipOf(t.team_no)], ['시연영상', !!t.video_url], ...(acctMode(t) ? [[MODE_CHIP[acctMode(t)], true]] : [])].map(([n, on]) =>
               `<i class="mc ${on ? 'on' : ''}" title="${n} ${on ? '등록됨' : '미등록'}">${on ? '✓ ' : ''}${n}${on ? '' : ' 미등록'}</i>`).join('')}</span></span>
           ${statusBadge(s)}<span class="score">${s ? sum(s.items) + '점' : ''}</span>
         </div>`; }).join('')}</div>`).join('')}
@@ -1122,7 +1164,7 @@ function renderTeam(no) {
       ${t.demo_note ? `<span class="an">${h(t.demo_note)}</span>` : ''}
     </div>`;
   const link = (u, l, w) => mat(!!u, u ? `<a href="${h(u)}" target="_blank" rel="noopener" class="pop" data-w="${w}">${l} ↗</a>` : `<span class="ml">${l}</span>`);
-  const pdf = fileOf(no), hf = htmlOf(no);
+  const pdf = fileOf(no), hf = htmlOf(no), zf = zipOf(no);
   $('#app').innerHTML = `<div class="wrap tpage" id="tp"><div class="tlayout">
     <aside class="card viewer" id="vw" hidden>
       <div class="vbar"><b>결과보고서</b><span class="muted tiny" id="vn"></span><span class="sp"></span>
@@ -1134,7 +1176,7 @@ function renderTeam(no) {
     <div class="card tinfo">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="badge b-navy">${t.team_no}번</span><span class="muted tiny">${h(t.field)}</span><span class="muted tiny">${h(t.theme)}</span><span style="margin-left:auto">${statusBadge(s)}</span></div>
       <h1>${h(t.title)}</h1>
-      <div class="mats" role="group" aria-label="평가자료 등록 현황">${mat(!!pdf, pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span class="ml">결과보고서</span>')}${hf ? mat(true, `<button type="button" class="btn sm pri" id="hv">시제품 실행 (HTML 파일)</button>`) : ''}${hf && t.demo_url ? link(t.demo_url, '시제품 실행링크', 'jd_demo') : hf ? '' : link(t.demo_url, '시제품 실행링크', 'jd_demo')}${link(t.video_url, '시연 영상', 'jd_video')}<span class="matcnt">자료 ${[pdf, t.demo_url || hf, t.video_url].filter(Boolean).length}/3 등록</span></div>${acctPanel}
+      <div class="mats" role="group" aria-label="평가자료 등록 현황">${mat(!!pdf, pdf ? `<button type="button" class="btn sm pri" id="rv">결과보고서 보기 (PDF ${fsize(pdf.size)})</button>` : '<span class="ml">결과보고서</span>')}${hf ? mat(true, `<button type="button" class="btn sm pri" id="hv">시제품 실행 (HTML 파일)</button>`) : ''}${t.demo_url ? link(t.demo_url, '시제품 실행링크', 'jd_demo') : ''}${zf ? mat(true, `<button type="button" class="btn sm" id="zv">시제품 다운로드 (ZIP ${fsize(zf.size)})</button>`) : ''}${!t.demo_url && !hf && !zf ? mat(false, '<span class="ml">시제품</span>') : ''}${link(t.video_url, '시연 영상', 'jd_video')}<span class="matcnt">자료 ${[pdf, t.demo_url || hf || zf, t.video_url].filter(Boolean).length}/3 등록</span></div>${acctPanel}
     </div>
     ${lock ? `<div class="note">${D.closed ? '심사가 마감되어 평가를 수정할 수 없습니다.' : '결과를 전송해 점수가 확정되었습니다. 수정이 필요하면 사업통합관리팀(2453)에 요청하세요.'}</div>` : ''}
     <div class="legend">
@@ -1186,6 +1228,7 @@ function renderTeam(no) {
     const win = window.open(a.href, a.dataset.w, `popup=yes,width=${W},height=${H},left=${L},top=${T},resizable=yes,scrollbars=yes`);
     if (win) { e.preventDefault(); try { win.opener = null; } catch {} win.focus(); }
   });
+  if (zf) $('#zv').onclick = async e => { const b = e.currentTarget, old = b.textContent; b.disabled = true; b.textContent = '내려받는 중…'; try { await downloadZip(no); } catch (er) { toast(er.message); } b.disabled = false; b.textContent = old; };
   if (hf) $('#hv').onclick = async e => { const b = e.currentTarget; b.disabled = true; b.textContent = '불러오는 중…'; await openHtml(no); b.disabled = false; b.textContent = '시제품 실행 (HTML 파일)'; };
   if (pdf) {
     // 넓은 화면: 왼쪽 결과보고서 · 오른쪽 평가표 / 좁은 화면: 평가표 위에 결과보고서
@@ -1719,18 +1762,23 @@ function paneTeams() {
     return `<div class="fline"><span class="fst" id="fs${t.team_no}" ${f ? `title="${h(f.name)} (${fsize(f.size)}, ${new Date(f.uploaded_at).toLocaleString('ko-KR')})"` : ''}>${f ? `<b>${h(f.name)}</b> <span class="muted">${fsize(f.size)}</span>` : '<span class="muted">미등록</span>'}</span>
         <label class="btn xs ${f ? '' : 'pri'}">${f ? '교체' : '올리기'}<input type="file" accept="application/pdf,.pdf" class="fu" data-t="${t.team_no}" hidden></label>
         ${f ? `<button class="btn xs fv" data-t="${t.team_no}">보기</button><button class="btn xs danger fd" data-t="${t.team_no}">삭제</button>` : ''}</div>`; };
+  const zcell = t => { const f = zipOf(t.team_no);
+    return `<div class="fline hl"><span class="fst" id="zs${t.team_no}" ${f ? `title="${h(f.name)} (${fsize(f.size)}, ${new Date(f.uploaded_at).toLocaleString('ko-KR')})"` : ''}>${f ? '' : '<span class="muted">미등록</span>'}</span>
+        ${f ? `<button class="btn xs zdn" data-t="${t.team_no}">받기</button>` : ''}<label class="btn xs ${f ? '' : 'pri'}">${f ? '교체' : '올리기'}<input type="file" accept=".zip,application/zip" class="zu" data-t="${t.team_no}" hidden></label>
+        ${f ? `<button class="btn xs danger zdl" data-t="${t.team_no}">삭제</button>` : ''}</div>`; };
   const hcell = t => { const f = htmlOf(t.team_no);
-    return `<div class="fline hl"><span class="fst" id="hs${t.team_no}" ${f ? `title="${h(f.name)} (${fsize(f.size)}, ${new Date(f.uploaded_at).toLocaleString('ko-KR')})"` : ''}>${f ? '<span class="badge b-ok">등록</span>' : '<span class="muted">미등록</span>'}</span>
-        <label class="btn xs ${f ? '' : 'pri'}">${f ? '교체' : '올리기'}<input type="file" accept="text/html,.html,.htm" class="hu" data-t="${t.team_no}" hidden></label>
-        ${f ? `<button class="btn xs hvw" data-t="${t.team_no}">실행</button><button class="btn xs danger hdl" data-t="${t.team_no}">삭제</button>` : ''}</div>`; };
+    return `<div class="fline hl"><span class="fst" id="hs${t.team_no}" ${f ? `title="${h(f.name)} (${fsize(f.size)}, ${new Date(f.uploaded_at).toLocaleString('ko-KR')})"` : ''}>${f ? '' : '<span class="muted">미등록</span>'}</span>
+        ${f ? `<button class="btn xs hvw" data-t="${t.team_no}">실행</button>` : ''}<label class="btn xs ${f ? '' : 'pri'}">${f ? '교체' : '올리기'}<input type="file" accept="text/html,.html,.htm" class="hu" data-t="${t.team_no}" hidden></label>
+        ${f ? `<button class="btn xs danger hdl" data-t="${t.team_no}">삭제</button>` : ''}</div>`; };
   $('#pane').innerHTML = `
-    <div class="note">결과보고서는 PDF 파일(50MB 이하)로 올리면 심사위원이 평가표 화면에서 바로 보고 내려받을 수 있습니다. 시제품 실행링크·시연 영상 주소는 입력 후 저장하면 평가표에서 새 창으로 열립니다. 링크 대신 <b>HTML 파일(20MB 이하, 파일 하나로 된 것)</b>을 올리면 심사위원이 ‘시제품 실행’을 눌러 새 창에서 바로 구동해 볼 수 있습니다(이미지·스타일·스크립트가 모두 한 파일에 포함되어야 하며, 로그인·서버 연동 기능은 제출자 설계에 따라 동작합니다). 시제품 로그인 방식은 사례마다 ‘시제품 계정’에서 꼭 설정해 주세요(계정 입력 필요 / 시연용 바로 로그인 제공 / 로그인 불필요). 설정한 내용이 평가표 자료 아래에 표시되어, 계정이 없는 이유를 심사위원이 오해하지 않습니다. ${D.teams.some(t => !acctMode(t)) ? `<span class="badge b-warn">접속 방식 미설정 ${D.teams.filter(t => !acctMode(t)).length}건</span>` : ''}</div>
+    <div class="note">결과보고서는 PDF 파일(50MB 이하)로 올리면 심사위원이 평가표 화면에서 바로 보고 내려받을 수 있습니다. 시제품 실행링크·시연 영상 주소는 입력 후 저장하면 평가표에서 새 창으로 열립니다. 시제품은 <b>실행링크 · HTML 파일 · ZIP 파일</b> 중 하나 이상 올리면 등록된 것으로 봅니다(여러 개도 가능). <b>HTML 파일(20MB 이하, 파일 하나로 된 것)</b>을 올리면 심사위원이 ‘시제품 실행’을 눌러 새 창에서 바로 구동해 볼 수 있습니다(이미지·스타일·스크립트가 모두 한 파일에 포함되어야 하며, 로그인·서버 연동 기능은 제출자 설계에 따라 동작합니다). <b>ZIP 파일(50MB 이하)</b>은 심사위원이 내려받아 직접 실행해 볼 수 있는 시제품입니다. 시제품 로그인 방식은 사례마다 ‘시제품 계정’에서 꼭 설정해 주세요(계정 입력 필요 / 시연용 바로 로그인 제공 / 로그인 불필요). 설정한 내용이 평가표 자료 아래에 표시되어, 계정이 없는 이유를 심사위원이 오해하지 않습니다. ${D.teams.some(t => !acctMode(t)) ? `<span class="badge b-warn">접속 방식 미설정 ${D.teams.filter(t => !acctMode(t)).length}건</span>` : ''}</div>
     <div class="tbl-wrap"><table class="t compact matt">
-      <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>HTML 파일</th><th>시연 영상</th><th>시제품 계정</th><th>링크</th></tr></thead>
+      <thead><tr><th>번호</th><th>사례명</th><th>결과보고서(PDF)</th><th>실행링크</th><th>HTML 파일</th><th>ZIP 파일</th><th>시연 영상</th><th>시제품 계정</th><th>링크</th></tr></thead>
       <tbody>${D.teams.map(t => `<tr data-t="${t.team_no}"><td>${t.team_no}</td><td class="l nowrap" title="${h(t.title)}">${h(t.title)}</td>
         <td class="l">${fcell(t)}</td>
         <td><input class="inp" data-k="demo_url" value="${h(t.demo_url)}" placeholder="https://"></td>
         <td class="l">${hcell(t)}</td>
+        <td class="l">${zcell(t)}</td>
         <td><input class="inp" data-k="video_url" value="${h(t.video_url)}" placeholder="https://"></td>
         <td class="l"><div class="fline">${acctMode(t) === 'account' ? `<span class="fst" title="아이디: ${h(t.demo_id) || '(없음)'}"><span class="badge b-ok">계정 필요</span></span>`
             : acctMode(t) ? `<span class="fst" title="${MODE_LABEL[acctMode(t)]}"><span class="badge b-ok">${MODE_CHIP[acctMode(t)]}</span></span>` : '<span class="badge b-warn">미설정</span>'}
@@ -1792,12 +1840,31 @@ function paneTeams() {
     if (!file) return;
     if (htmlOf(t) && !await confirmBox('시제품 HTML 교체', `${t}번 사례의 기존 HTML 파일을 <b>${h(file.name)}</b>(으)로 바꿉니다.`, '교체')) return;
     const st = $('#hs' + t);
-    document.querySelectorAll('.fu,.fv,.fd,.hu,.hvw,.hdl').forEach(x => x.disabled = true);
+    document.querySelectorAll('.fu,.fv,.fd,.hu,.hvw,.hdl,.zu,.zdn,.zdl').forEach(x => x.disabled = true);
     try {
       await uploadHtml(t, file, (i, n) => { st.innerHTML = `<b>올리는 중 ${Math.round(i / n * 100)}%</b>`; });
       await adminDo('load'); toast(t + '번 시제품 HTML 파일을 올렸습니다.');
     } catch (e) { toast(e.message); }
     renderAdmin();
+  });
+  document.querySelectorAll('.zu').forEach(inp => inp.onchange = async () => {
+    const file = inp.files[0], t = +inp.dataset.t; inp.value = '';
+    if (!file) return;
+    if (zipOf(t) && !await confirmBox('시제품 ZIP 교체', `${t}번 사례의 기존 ZIP 파일을 <b>${h(file.name)}</b>(으)로 바꿉니다.`, '교체')) return;
+    const st = $('#zs' + t);
+    document.querySelectorAll('.fu,.fv,.fd,.hu,.hvw,.hdl,.zu,.zdn,.zdl').forEach(x => x.disabled = true);
+    try {
+      await uploadZip(t, file, (i, n) => { st.innerHTML = `<b>${Math.round(i / n * 100)}%</b>`; });
+      await adminDo('load'); toast(t + '번 시제품 ZIP 파일을 올렸습니다.');
+    } catch (e) { toast(e.message); }
+    renderAdmin();
+  });
+  document.querySelectorAll('.zdn').forEach(b => b.onclick = async () => { b.disabled = true; try { await downloadZip(+b.dataset.t); } catch (e) { toast(e.message); } b.disabled = false; });
+  document.querySelectorAll('.zdl').forEach(b => b.onclick = async () => {
+    const t = +b.dataset.t;
+    if (!await confirmBox('시제품 ZIP 삭제', `${t}번 사례의 ZIP 파일을 삭제합니다. 심사위원 화면에서도 사라집니다.`, '삭제', 'danger')) return;
+    try { await rpc('jd_zip_del', { p_code:S.code, p_team:t }); await adminDo('load'); toast('삭제했습니다.'); renderAdmin(); }
+    catch (e) { toast(e.message); }
   });
   document.querySelectorAll('.hvw').forEach(b => b.onclick = async () => { b.disabled = true; await openHtml(+b.dataset.t); b.disabled = false; });
   document.querySelectorAll('.hdl').forEach(b => b.onclick = async () => {
