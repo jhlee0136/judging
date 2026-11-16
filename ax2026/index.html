@@ -944,11 +944,13 @@ async function loadPdfView(team, onProg) {
       const m = pg.getMediaBox();
       pg.drawRectangle({ x:m.x, y:m.y, width:m.width, height:m.height, color:rgb(0.96, 0.62, 0.2), opacity:0.17, blendMode:BlendMode.Multiply });
       // 엑셀의 빗금 채우기처럼 45° 사선(쪽 안쪽으로만 그림)
-      const W = m.width, H = m.height, gap = 12, hc = rgb(0.9, 0.45, 0.08);
+      // 선마다 따로 그리면 열람기가 느려지므로 쪽당 경로 하나(투명도 설정 1회)로 그림
+      const W = m.width, H = m.height, gap = 12; let d = '';
       for (let k = -H; k < W; k += gap) {
         const t0 = Math.max(0, -k), t1 = Math.min(H, W - k);
-        if (t1 - t0 > 1) pg.drawLine({ start:{ x:m.x + k + t0, y:m.y + t0 }, end:{ x:m.x + k + t1, y:m.y + t1 }, thickness:0.7, color:hc, opacity:0.4, blendMode:BlendMode.Multiply });
+        if (t1 - t0 > 1) d += `M${(k + t0).toFixed(1)} ${(H - t0).toFixed(1)}L${(k + t1).toFixed(1)} ${(H - t1).toFixed(1)}`;
       }
+      pg.drawSvgPath(d, { x:m.x, y:m.y + H, borderColor:rgb(0.9, 0.45, 0.08), borderWidth:0.7, borderOpacity:0.4 });
       pg.drawRectangle({ x:m.x, y:m.y, width:Math.min(16, W * .035), height:H, color:rgb(0.85, 0.38, 0.05), opacity:0.7 });
     });
     const out = await doc.save();
