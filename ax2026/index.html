@@ -200,6 +200,14 @@ table.t tr.out td{color:var(--mute)}
 .cmt-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}.cmt-head h3{font-size:16px}.cmt-head .sp{flex:1}
 .cmt{border-top:1px solid var(--hair);padding:12px 0 10px}.cmt-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .cmt-body{white-space:pre-wrap;line-height:1.7}
+.cmt-pline{display:none}
+/* PDF 저장: 사례마다 A4 세로 한 쪽. 의견이 많으면 글자 크기를 줄여 한 쪽에 맞춤(--cf는 인쇄 직전 계산). body.pfit은 크기를 재는 동안만 붙음 */
+@page cmt{size:A4 portrait;margin:12mm}
+body.pfit #pane .cmt-team{width:186mm;font-size:var(--cf,13px);padding:0;border:0;box-shadow:none;margin:0}
+body.pfit .cmt-head h3{font-size:1.3em}
+body.pfit .cmt-pline{display:block;font-size:.8em;color:#555;margin-bottom:8px}
+body.pfit .cmt-body{line-height:1.55}
+body.pfit .cmt{padding:.55em 0 .45em}
 .awards .aw-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}.awards h3{font-size:17px}
 s.drop{color:var(--mute)}
 .mx td.cell{text-align:center;cursor:pointer;font-variant-numeric:tabular-nums}
@@ -496,6 +504,16 @@ table.t.matt .inp{min-width:0;width:100%;padding:2px 6px;font-size:12px}
   table.t th,table.t td{padding:5px 6px}
   table.t tr{break-inside:avoid}
   .awards,.formula,.cmt{break-inside:avoid}
+  #demo{display:none!important}
+  body.pfit #app{page:cmt}
+  #pane.cmtpane{page:cmt}
+  #app>.wrap>div[style*="height:40px"]{display:none}
+  #pane .cmt-team{break-after:page;page-break-after:always;break-inside:avoid;font-size:var(--cf,13px);padding:0;border:0;box-shadow:none;margin:0}
+  #pane .cmt-team:last-child{break-after:auto;page-break-after:auto}
+  .cmt-head h3{font-size:1.3em}
+  .cmt-pline{display:block;font-size:.8em;color:#555;margin-bottom:8px}
+  .cmt-body{line-height:1.55}
+  .cmt{padding:.55em 0 .45em}
   table.t tr.out td{color:#666}
   .rank{width:22px;height:22px}
   /* 기본 인쇄: 1쪽 시상 결과, 2쪽 전체 순위, 3쪽 산정 방법 */
@@ -2129,8 +2147,8 @@ function paneComments() {
     .sort((a, b) => a.judge_no - b.judge_no) }));
   const shown = list.filter(x => (cmtFilter.team === 'all' || x.t.team_no === +cmtFilter.team) && (!cmtFilter.only || x.rows.length));
   const total = sum(list.map(x => x.rows.length));
+  $('#pane').className = 'cmtpane';
   $('#pane').innerHTML = `
-    <div class="printonly phead"><h1>2026년 AX 교육·행정혁신 우수사례 심사 의견</h1><div>출력 일시 ${new Date().toLocaleString('ko-KR')} · 의견 ${total}건</div></div>
     <div class="toolbar">
       <select class="inp" id="cf" style="max-width:360px"><option value="all">전체 사례</option>${D.teams.map(t => `<option value="${t.team_no}" ${+cmtFilter.team === t.team_no ? 'selected' : ''}>${t.team_no}. ${h(t.title)}</option>`).join('')}</select>
       <label class="tiny muted" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="co" ${cmtFilter.only ? 'checked' : ''}> 의견 있는 사례만</label>
@@ -2139,6 +2157,7 @@ function paneComments() {
     </div>
     ${shown.length ? shown.map(({ t, rows }) => `
       <div class="card pad cmt-team">
+        <div class="cmt-pline">2026년 AX 교육·행정혁신 우수사례 심사 의견 · 출력 일시 ${new Date().toLocaleString('ko-KR')}</div>
         <div class="cmt-head"><span class="badge b-navy">${t.team_no}번 · ${h(t.field)}</span><h3>${h(t.title)}</h3><span class="muted tiny">${h(t.members)}</span><span class="sp"></span><span class="muted tiny">의견 ${rows.length}건</span></div>
         ${rows.length ? rows.map(r => `<div class="cmt">
             <div class="cmt-meta"><b>${h(jname(r.judge_no))}</b>
@@ -2150,7 +2169,11 @@ function paneComments() {
   $('#co').onchange = e => { cmtFilter.only = e.target.checked; paneComments(); };
   $('#cp').onclick = () => {
     const title = document.title; document.title = `AX우수사례_심사의견_${stamp()}`;
-    const done = () => { window.removeEventListener('afterprint', done); document.title = title; };
+    // 사례마다 A4 한 쪽(높이 약 273mm)에 들어가도록 글자 크기를 정함
+    document.body.classList.add('pfit');
+    document.querySelectorAll('#pane .cmt-team').forEach(c => { let f = 13; c.style.setProperty('--cf', f + 'px');
+      while (c.scrollHeight > 1000 && f > 6.5) { f -= .5; c.style.setProperty('--cf', f + 'px'); } });
+    const done = () => { window.removeEventListener('afterprint', done); document.title = title; document.body.classList.remove('pfit'); };
     window.addEventListener('afterprint', done);
     toast('인쇄 창의 ‘대상(프린터)’에서 ‘PDF로 저장’을 고르세요.'); setTimeout(() => window.print(), 100);
   };
