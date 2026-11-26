@@ -201,6 +201,30 @@ table.t tr.out td{color:var(--mute)}
 .cmt{border-top:1px solid var(--hair);padding:12px 0 10px}.cmt-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .cmt-body{white-space:pre-wrap;line-height:1.7}
 .cmt-pline{display:none}
+/* 공개 열람 페이지(로그인 없음): 사례명 = 시제품(주), 결과보고서·시연 영상 = 참고(보조) */
+.shr-head{padding:34px 0 14px}.shr-head h1{font-size:28px;margin-bottom:6px}
+.shr-head p{margin:0;color:var(--sub);font-size:15px}
+.shr-leg{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.shr-leg span{font-size:13px;border:1px solid var(--rule);border-radius:999px;padding:3px 11px;background:var(--sheet);color:var(--ink2)}
+.shr-leg b{color:var(--pine)}
+.shr-list{display:flex;flex-direction:column;gap:10px;margin-bottom:22px}
+.shr{display:grid;grid-template-columns:48px 1fr auto;gap:14px;align-items:center;background:var(--sheet);border:1px solid var(--hair);border-radius:10px;padding:14px 18px}
+.shr .no{font-family:var(--display);font-size:26px;color:var(--pine);text-align:center}
+.shr-th{font-size:12.5px;color:var(--mute);margin-bottom:2px}
+.shr-title{display:inline-block;font:inherit;font-size:19px;font-weight:700;line-height:1.35;color:var(--pine);text-decoration:none;background:none;border:0;padding:0;text-align:left;cursor:pointer}
+a.shr-title:hover,button.shr-title:hover{text-decoration:underline}
+.shr-title .go{font-size:13px;font-weight:600;margin-left:8px;color:#fff;background:var(--pine);border-radius:999px;padding:2px 10px;white-space:nowrap;vertical-align:2px}
+.shr-title.off{color:var(--mute);cursor:default}
+.shr-who{font-size:13.5px;color:var(--sub);margin-top:3px}
+.shr-opt{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:7px;font-size:12.5px;color:var(--sub)}
+.shr-inst{margin-top:7px;font-size:13px;color:var(--warn);background:var(--warnbg);border-radius:6px;padding:5px 10px;display:inline-block}
+.shr-acct{margin-top:7px;font-size:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--sub)}
+.shr-acct code{background:var(--wash);border-radius:4px;padding:1px 7px;color:var(--ink)}
+.shr-sub{display:flex;flex-direction:column;gap:6px;min-width:150px;border-left:1px solid var(--hair);padding-left:16px}
+.shr-sub small{font-size:11.5px;color:var(--mute)}
+.shr-sub .btn{justify-content:flex-start}
+.shr.ns{opacity:.55}.shr.ns .shr-title{color:var(--mute);text-decoration:line-through}
+@media (max-width:760px){ .shr{grid-template-columns:36px 1fr}.shr-sub{grid-column:1/-1;border-left:0;padding-left:0;flex-direction:row;flex-wrap:wrap;align-items:center;border-top:1px solid var(--hair);padding-top:10px} }
 /* PDF 저장: 사례마다 A4 세로 한 쪽. 의견이 많으면 글자 크기를 줄여 한 쪽에 맞춤(--cf는 인쇄 직전 계산). body.pfit은 크기를 재는 동안만 붙음 */
 @page cmt{size:A4 portrait;margin:12mm}
 body.pfit #pane .cmt-team{width:186mm;font-size:var(--cf,13px);padding:0;border:0;box-shadow:none;margin:0}
@@ -688,6 +712,7 @@ async function copyText(txt) {
 }
 const AUTH_FAIL = /접속코드가 맞지 않습니다|다시 로그인해 주세요/;
 function sessionExpired() {
+  if (S && S.no === -2) { S = null; D = null; return renderShareMsg('열람 링크가 바뀌었거나 중지되었습니다. 새 링크를 받아 주세요.'); }
   clearInterval(timer); timer = null;
   S = null; D = null; form = null; store.set('jd_sess', null);
   history.replaceState(null, '', '#/');
@@ -695,7 +720,7 @@ function sessionExpired() {
 }
 async function rpc(fn, args) {
   try { return await rpcRaw(fn, args); }
-  catch (e) { if (S && AUTH_FAIL.test(e.message) && fn !== 'jd_login' && fn !== 'jd_viewer_login') sessionExpired(); throw e; }
+  catch (e) { if (S && AUTH_FAIL.test(e.message) && fn !== 'jd_login' && fn !== 'jd_viewer_login' && fn !== 'jd_share_open') sessionExpired(); throw e; }
 }
 async function rpcRaw(fn, args) {
   if (!CFG.url) return Mock.call(fn, args);
@@ -736,7 +761,7 @@ const Mock = (() => {
   const vis = (db, no, t) => no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === t);
   const save = db => store.set('jd_demo', db, localStorage);
   const norm = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const auth = (db, no, code) => { if (no === -1) return norm(code) === (db.vcode || 'DEMOVIEW'); const j = db.judges.find(x => x.no === no); return j && j.code && j.code === norm(code); };
+  const auth = (db, no, code) => { if (no === -2) return !!(db.share && db.share.enabled && db.share.token === code); if (no === -1) return norm(code) === (db.vcode || 'DEMOVIEW'); const j = db.judges.find(x => x.no === no); return j && j.code && j.code === norm(code); };
   const payload = (db, no) => ({
     judge: { no, name: db.judges.find(x => x.no === no).name }, closed: db.closed,
     teams: db.teams.filter(t => no === 0 || !db.recuse.some(r => r.judge_no === no && r.team_no === t.team_no))
@@ -757,6 +782,8 @@ const Mock = (() => {
     const db = load(); let out;
     if (fn === 'jd_judge_names') out = db.judges.filter(x => x.no > 0).map(x => ({ no:x.no, name:x.name }));
     else if (fn === 'jd_login') out =auth(db, a.p_judge, a.p_code) ? payload(db, a.p_judge) : err('접속코드가 맞지 않습니다.');
+    else if (fn === 'jd_share_open') out = auth(db, -2, a.p_token) ? Object.assign(viewerPayload(db), { judge:{ no:-2, name:'열람' } }) : err('사용할 수 없는 링크입니다. 링크가 바뀌었거나 중지되었을 수 있습니다.');
+    else if (fn === 'jd_share_admin') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mShare(db, a.p_action);
     else if (fn === 'jd_viewer_login') out = auth(db, -1, a.p_code) ? viewerPayload(db) : err('접속코드가 맞지 않습니다.');
     else if (fn === 'jd_viewer_admin') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mViewer(db, a.p_action);
     else if (fn === 'jd_save') out = mSave(db, a);
@@ -788,6 +815,11 @@ const Mock = (() => {
       files:Object.values(FILES).filter(f => f.complete).map(({ team_no, name, size, chunks, uploaded_at, pages }) => ({ team_no, name, size, chunks, uploaded_at, pages: pages ?? null })),
       htmls:Object.values(HTMLS).filter(f => f.complete).map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name, size, chunks, uploaded_at })),
       zips:Object.values(ZIPS).filter(f => f.complete).map(({ team_no, name, size, chunks, uploaded_at }) => ({ team_no, name, size, chunks, uploaded_at })) };
+  }
+  function mShare(db, action) {
+    if (action === 'issue') { let t = ''; for (let k = 0; k < 36; k++) t += '0123456789abcdef'[Math.floor(Math.random() * 16)]; db.share = { token:t, enabled:true }; }
+    else if (action === 'off' && db.share) db.share.enabled = false;
+    return db.share || { token:null, enabled:false };
   }
   function mViewer(db, action) {
     if (action === 'issue') {
@@ -1140,6 +1172,9 @@ async function route() {
   clearInterval(timer); timer = null;
   const p = location.hash.replace(/^#\/?/, '').split('/');
   renderDemo();
+  const sh = location.hash.match(/^#\/open\/([A-Za-z0-9]+)/);
+  if (sh) { form = null; return renderShare(sh[1]); }
+  if (S && S.no === -2) { S = store.get('jd_sess'); D = null; }        // 열람 링크에서 나오면 원래 로그인 상태로
   if (!S) { form = null; return renderLanding(); }
   if (!D) {
     $('#app').innerHTML = '<div class="spin">불러오는 중…</div>';
@@ -1295,6 +1330,69 @@ function renderHome() {
   document.querySelectorAll('.team:not(.nosub)').forEach(el => {
     el.onclick = () => go('#/team/' + el.dataset.t);
     el.onkeydown = e => { if (e.key === 'Enter') go('#/team/' + el.dataset.t); };
+  });
+}
+
+/* ===== 공개 열람 링크(로그인 없음): 한 화면에서 모든 제출 자료 ===== */
+function renderShareMsg(msg) {
+  $('#top').innerHTML = '<span class="brand">전문대학 혁신지원사업 온라인 심사 시스템</span>';
+  $('#app').innerHTML = `<div class="wrap" style="padding-top:40px"><div class="card pad"><h2 style="margin-bottom:8px">열람할 수 없습니다</h2><p class="muted" style="margin:0">${h(msg)}</p></div></div>`;
+}
+async function renderShare(token) {
+  $('#top').innerHTML = '<span class="brand">전문대학 혁신지원사업 온라인 심사 시스템</span><span class="bsep" aria-hidden="true">›</span><span class="bprog">2026 AX 교육·행정혁신 우수사례 육성 프로그램</span>';
+  if (!(S && S.no === -2 && S.code === token && D)) {
+    $('#app').innerHTML = '<div class="spin">불러오는 중…</div>';
+    try { D = normD(await rpc('jd_share_open', { p_token:token })); S = { no:-2, code:token }; }
+    catch (e) { S = null; D = null; return renderShareMsg(e.message); }
+  }
+  const fields = [...new Set(D.allTeams.map(t => t.field))];
+  const row = t => {
+    const no = t.team_no, who = `<div class="shr-who">${h(t.kind || '')} · ${h(t.members || '')}</div>`;
+    if (t.nosub) return `<div class="shr ns"><span class="no">${no}</span><div><div class="shr-th">${h(t.field)} · ${h(t.theme)}</div><span class="shr-title off">${h(t.title)}</span>${who}</div><div class="shr-sub"><span class="badge b-bad">미제출</span><small>참가자가 결과물을 제출하지 않았습니다.</small></div></div>`;
+    const link = t.demo_url, hf = htmlOf(no), zf = zipOf(no), pdf = fileOf(no), am = acctMode(t);
+    const kind = link ? 'link' : hf ? 'html' : zf ? 'zip' : 'none';
+    const title = kind === 'link' ? `<a class="shr-title" href="${h(link)}" target="_blank" rel="noopener">${h(t.title)}<span class="go">시제품 열기 ↗</span></a>`
+      : kind === 'html' ? `<button type="button" class="shr-title" data-a="html" data-t="${no}">${h(t.title)}<span class="go">시제품 실행 ↗</span></button>`
+      : kind === 'zip' ? `<button type="button" class="shr-title" data-a="zip" data-t="${no}">${h(t.title)}<span class="go">다운로드 ↓</span></button>`
+      : `<span class="shr-title off">${h(t.title)}<span class="badge b-none" style="margin-left:8px">시제품 미등록</span></span>`;
+    const others = [kind !== 'html' && hf ? `<button type="button" class="btn xs" data-a="html" data-t="${no}">HTML로 실행</button>` : '',
+      kind !== 'zip' && zf ? `<button type="button" class="btn xs" data-a="zip" data-t="${no}">설치형 다운로드(ZIP)</button>` : ''].filter(Boolean).join('');
+    const inst = zf ? `<div class="shr-inst">⚠ ${kind === 'zip' ? '이 시제품은 웹에서 바로 열리지 않는 <b>프로그램(ZIP)</b>입니다. 다운로드 후 설치·실행해야 합니다.' : '설치형(ZIP)은 웹에서 바로 열리지 않으며, 다운로드 후 설치·실행해야 합니다.'}</div>` : '';
+    const acct = am === 'account' ? `<div class="shr-acct"><b>시제품 로그인 계정</b>${t.demo_id ? `아이디 <code>${h(t.demo_id)}</code><button type="button" class="btn xs" data-cp="${no}|id">복사</button>` : ''}${t.demo_pw ? `비밀번호 <code>${h(t.demo_pw)}</code><button type="button" class="btn xs" data-cp="${no}|pw">복사</button>` : ''}${t.demo_note ? `<span>${h(t.demo_note)}</span>` : ''}</div>`
+      : am ? `<div class="shr-acct"><span class="badge b-ok">${MODE_LABEL[am]}</span><span>${MODE_TEXT[am] || ''}</span>${t.demo_note ? `<span>${h(t.demo_note)}</span>` : ''}</div>` : '';
+    return `<div class="shr"><span class="no">${no}</span><div><div class="shr-th">${h(t.field)} · ${h(t.theme)}</div>${title}${who}${others ? `<div class="shr-opt">다른 방식 ${others}</div>` : ''}${inst}${acct}</div>
+      <div class="shr-sub"><small>참고 자료</small>
+        ${pdf ? `<button type="button" class="btn sm" data-a="rep" data-t="${no}">결과보고서${pdf.pages ? ` (${pdf.pages}쪽)` : ''}</button>${pgOver(pdf) ? `<small style="color:var(--warn)">${PDF_LIMIT}쪽 초과 · ${PDF_LIMIT + 1}쪽부터 음영</small>` : ''}` : '<span class="muted tiny">결과보고서 미등록</span>'}
+        ${t.video_url ? `<a class="btn sm" href="${h(t.video_url)}" target="_blank" rel="noopener">시연 영상 ↗</a>` : '<span class="muted tiny">시연 영상 미등록</span>'}</div></div>`;
+  };
+  $('#app').innerHTML = `<div class="wrap">
+    <div class="shr-head"><h1>2026 AX 교육·행정혁신 우수사례 제출 자료</h1>
+      <p>사례 제목을 누르면 <b>시제품</b>이 바로 열립니다. 결과보고서와 시연 영상은 <b>참고 자료</b> 버튼으로 확인합니다.</p>
+      <div class="shr-leg"><span><b>제목 클릭</b> = 시제품 열기</span><span><b>참고 자료 버튼</b> = 결과보고서·시연 영상</span><span><b>다운로드형</b>은 설치 후 실행 필요</span></div></div>
+    ${fields.map(fd => `<div class="grp">${h(fd)} <span class="badge">${D.allTeams.filter(t => t.field === fd).length}개 사례</span></div>
+      <div class="shr-list">${D.allTeams.filter(t => t.field === fd).map(row).join('')}</div>`).join('')}
+    <div style="height:40px"></div></div>`;
+  const team = n => D.allTeams.find(t => t.team_no === +n);
+  document.querySelectorAll('#app [data-cp]').forEach(b => b.onclick = async () => {
+    const [n, k] = b.dataset.cp.split('|'), t = team(n);
+    toast(await copyText(k === 'id' ? t.demo_id : t.demo_pw) ? (k === 'id' ? '아이디를 복사했습니다.' : '비밀번호를 복사했습니다.') : '복사하지 못했습니다. 직접 입력해 주세요.');
+  });
+  document.querySelectorAll('#app [data-a]').forEach(b => b.onclick = async () => {
+    const a = b.dataset.a, no = +b.dataset.t, t = team(no);
+    if (a === 'html') { const old = b.innerHTML; b.disabled = true; b.textContent = '불러오는 중…'; await openHtml(no); b.disabled = false; b.innerHTML = old; }
+    else if (a === 'zip') {
+      const go = await modal('다운로드 후 설치가 필요한 시제품', `<p style="margin:0 0 10px"><b>${no}. ${h(t.title)}</b></p>
+        <p style="margin:0 0 8px">이 시제품은 웹 주소로 바로 열리지 않는 <b>프로그램(ZIP 파일)</b>입니다.</p>
+        <ol style="margin:0 0 10px 18px;padding:0"><li>아래 <b>다운로드</b>를 눌러 ZIP 파일을 저장합니다.</li><li>압축을 풉니다.</li><li>들어 있는 안내 문서(README 등)에 따라 <b>설치·실행</b>합니다.</li></ol>
+        <p class="tiny muted" style="margin:0">제출자가 만든 파일이므로 실행 전에 보안 프로그램으로 검사하시기 바랍니다.</p>`,
+        [{ label:'취소', value:false }, { label:'다운로드', value:true, cls:'pri' }]);
+      if (go) { const old = b.innerHTML; b.disabled = true; b.textContent = '내려받는 중…'; try { await downloadZip(no); } catch (e) { toast(e.message); } b.disabled = false; b.innerHTML = old; }
+    } else if (a === 'rep') {
+      const win = window.open('', '_blank');
+      if (win) win.document.write('<title>결과보고서</title><p style="font:16px sans-serif;padding:24px">결과보고서를 불러오는 중…</p>');
+      try { const r = await loadPdfView(no); if (win) win.location.href = r.url; else location.href = r.url; }
+      catch (e) { if (win) win.close(); toast(e.message); }
+    }
   });
 }
 
@@ -1925,7 +2023,14 @@ function paneJudges() {
     <div class="card pad" id="vwcard" style="margin-top:16px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>열람자</b><span class="muted tiny">참가자 제출 자료만 볼 수 있는 읽기 전용 권한(공용 코드 1개). 점수·순위·결과는 볼 수 없고 자료를 고칠 수 없습니다.</span>
         <span class="sp" style="flex:1"></span><span id="vwst" class="badge b-none">확인 중…</span>
-        <button class="btn sm" id="vwv" hidden>코드 보기</button><button class="btn sm" id="vwc" disabled>발급</button><button class="btn sm" id="vwm" hidden>안내 문구</button></div></div>`;
+        <button class="btn sm" id="vwv" hidden>코드 보기</button><button class="btn sm" id="vwc" disabled>발급</button><button class="btn sm" id="vwm" hidden>안내 문구</button></div></div>
+    <div class="card pad" id="shcard" style="margin-top:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>공개 열람 링크</b><span class="muted tiny">로그인 없이 링크만으로 제출 자료를 한 화면에서 보는 읽기 전용 페이지(의사결정권자용). 링크를 아는 사람은 누구나 볼 수 있으니 필요한 분께만 전달하세요.</span>
+        <span class="sp" style="flex:1"></span><span id="shst" class="badge b-none">확인 중…</span></div>
+      <div id="shrow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <input class="inp" id="shurl" readonly style="flex:1;min-width:260px" placeholder="아직 링크가 없습니다. ‘링크 만들기’를 누르세요.">
+        <button class="btn sm" id="shcp" hidden>링크 복사</button><a class="btn sm" id="shop" target="_blank" rel="noopener" hidden>열어 보기</a>
+        <button class="btn sm" id="shgo" disabled>링크 만들기</button><button class="btn sm danger" id="shoff" hidden>사용 중지</button></div></div>`;
   let vcode = null, vhas = false;
   const vpaint = () => {
     $('#vwst').className = 'badge ' + (vhas ? 'b-ok' : 'b-none'); $('#vwst').textContent = vhas ? '발급됨' : '미발급';
@@ -1934,6 +2039,24 @@ function paneJudges() {
   };
   rpc('jd_viewer_admin', { p_code:S.code, p_action:'view' }).then(r => { vcode = r.code; vhas = !!r.has_code; vpaint(); })
     .catch(() => { $('#vwst').textContent = '사용 준비 안 됨'; });
+  let shl = { token:null, enabled:false };
+  const shUrl = () => SITE_URL + '#/open/' + shl.token;
+  const shpaint = () => {
+    const on = !!(shl.token && shl.enabled);
+    $('#shst').className = 'badge ' + (on ? 'b-ok' : 'b-none'); $('#shst').textContent = on ? '사용 중' : shl.token ? '중지됨' : '미생성';
+    $('#shurl').value = shl.token ? shUrl() : ''; $('#shgo').disabled = false; $('#shgo').textContent = shl.token ? '링크 재생성' : '링크 만들기';
+    $('#shcp').hidden = !on; $('#shop').hidden = !on; $('#shoff').hidden = !on; if (on) $('#shop').href = shUrl();
+  };
+  rpc('jd_share_admin', { p_code:S.code, p_action:'view' }).then(r => { shl = r || shl; shpaint(); }).catch(() => { $('#shst').textContent = '사용 준비 안 됨'; });
+  $('#shcp').onclick = async () => toast(await copyText(shUrl()) ? '링크를 복사했습니다.' : '복사하지 못했습니다. 직접 선택해 복사하세요.');
+  $('#shgo').onclick = async () => {
+    if (shl.token && !await confirmBox('링크 재생성', '기존 링크는 즉시 쓸 수 없게 됩니다. 이미 링크를 받은 분께 새 링크를 다시 전달해야 합니다.', '재생성')) return;
+    try { shl = await rpc('jd_share_admin', { p_code:S.code, p_action:'issue' }); shpaint(); toast('새 링크를 만들었습니다.'); } catch (e) { toast(e.message); }
+  };
+  $('#shoff').onclick = async () => {
+    if (!await confirmBox('공개 링크 중지', '링크를 중지하면 지금까지 전달한 링크로는 열 수 없게 됩니다. 다시 쓰려면 ‘링크 재생성’을 눌러야 합니다.', '중지')) return;
+    try { shl = await rpc('jd_share_admin', { p_code:S.code, p_action:'off' }); shpaint(); toast('링크를 중지했습니다.'); } catch (e) { toast(e.message); }
+  };
   const showV = async code => {
     const v = await modal('열람자 접속코드', `<div class="code">${h(code)}</div><p class="tiny muted">로그인 화면의 구분에서 ‘열람자’를 고르고 이 코드를 입력합니다. 여러 사람이 같은 코드를 씁니다.</p>`,
       [{ label:'복사', value:'copy' }, { label:'닫기', value:null, cls:'pri' }]);
