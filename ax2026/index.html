@@ -545,6 +545,19 @@ table.t.matt .inp{min-width:0;width:100%;padding:2px 6px;font-size:12px}
   .pcase-title{font-size:16px;margin:0 0 10px}
   .pcase-sum{margin-bottom:12px}
   .pcase-det table.t{font-size:10.5px}
+  /* 쉬운 설명 보고서 */
+  .easy{font-size:11px;color:#111}
+  .easy h1{font-size:18px;margin:0 0 4px}.easy h2{font-size:14px;margin:12px 0 6px}
+  .easy .sub{color:#555;font-size:10.5px;margin-bottom:10px}
+  .easy table.t{font-size:10.5px}.easy table.t th,.easy table.t td{padding:4px 6px}
+  .easy .why{border:1px solid #bbb;border-radius:6px;padding:8px 12px;margin-top:10px;line-height:1.55;font-size:10.5px}
+  .easy .why ol{margin:4px 0 0 16px;padding:0}.easy .why li{margin:2px 0}
+  .easy .jc{text-align:center;line-height:1.25}.easy .jc small{display:block;font-size:9px;color:#555}
+  .easy .jc .up{color:#1a6b3a}.easy .jc .dn{color:#a33}
+  .easy .jc s{color:#888}
+  .easy table.rk{table-layout:fixed;width:100%}.easy table.rk td,.easy table.rk th{padding:3px 4px}.easy table.rk td.l{font-size:10px;line-height:1.3}
+  .easy .note2{font-size:9.5px;color:#444;margin-top:6px;line-height:1.5}
+  .easy .ex li{margin:4px 0;line-height:1.5}
 }
 #printdoc{display:none}
 </style>
@@ -1640,7 +1653,7 @@ function paneResult() {
     ${printHead(C)}
     ${awardSummary(C)}
     <div class="toolbar" style="margin-top:16px"><span class="muted tiny">순위 = Z점수(최고·최저 제외 평균) 내림차순 · 동점이면 원점수 평균, 문항 3 평균 순 · 행을 누르면 위원별 상세 · ‘제외’로 시상에서 뺄 수 있음</span><span class="sp"></span>
-      <label class="tiny muted" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="pdet"> 위원별 상세 포함</label><button class="btn sm pri" id="pr">PDF 저장</button><button class="btn sm" id="cx">CSV 내보내기</button></div>
+      <label class="tiny muted" style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" id="pdet"> 위원별 상세 포함</label><button class="btn sm pri" id="pr">PDF 저장</button><button class="btn sm" id="pe" title="Z점수를 모르는 분께 보고할 때 쓰는 쉬운 설명 문서">쉬운 설명 PDF</button><button class="btn sm" id="cx">CSV 내보내기</button></div>
     ${zLegend(zLo, zHi)}
     <h2 class="printonly ptitle">전체 순위</h2>
     <div class="tbl-wrap rank-tbl"><table class="t">
@@ -1698,6 +1711,7 @@ function paneResult() {
   });
   $('#aws').onclick = editAwards;
   $('#pr').onclick = () => printResult($('#pdet').checked);
+  $('#pe').onclick = () => printResult(false, true);
   $('#cx').onclick = () => exportCSV(C);
 }
 // 결과·순위를 A4 가로로 인쇄 → 인쇄 창에서 'PDF로 저장'. 파일 이름은 문서 제목을 따름
@@ -1722,12 +1736,67 @@ function printDoc(C) {
     </section>`).join('');
   return `<section class="ppage">${printHead(C)}${awardSummary(C)}</section>${pages}`;
 }
-function printResult(withDet) {
+// 쉬운 설명 보고서(A4 가로): 1쪽 시상 결과 + 계산 설명, 2쪽 위원별 점수(평소 평균 대비), 3쪽 원점수 순서와 순위가 다른 사례 설명
+// 환산점수 = 전체 원점수 평균 + 전체 표준편차 × Z점수 평균(Z와 순서가 같고 100점 눈금으로 읽기 쉽게 바꾼 값)
+function easyDoc(C) {
+  const all = C.rows.flatMap(r => r.ent.map(e => e.raw)), M = mean(all), SD = all.length ? Math.sqrt(sum(all.map(x => (x - M) ** 2)) / all.length) : 0;
+  const conv = r => r.zAvg == null ? null : M + SD * r.zAvg;
+  const js = D.judges.map(j => ({ j, st: C.J[j.no] })).filter(x => x.st.n);
+  const hi = js.reduce((a, b) => b.st.m > a.st.m ? b : a, js[0]), lo = js.reduce((a, b) => b.st.m < a.st.m ? b : a, js[0]);
+  const rawRank = {}; [...C.ok].sort((a, b) => b.rawAvg - a.rawAvg).forEach((r, i, a) => rawRank[r.team.team_no] = i && Math.abs(a[i - 1].rawAvg - r.rawAvg) < 1e-9 ? rawRank[a[i - 1].team.team_no] : i + 1);
+  const cfg = awCfg(), pick = (fd, name) => C.ok.filter(r => r.team.field === fd && r.award === name);
+  const groups = [];
+  if (cfg.grand) groups.push({ name:'대상', parts:[{ fd:'전체', rs:C.ok.filter(r => r.award === '대상') }] });
+  AW_NAMES.forEach(nm => { const fs = C.fields.filter(fd => awN(cfg.f(fd), nm) > 0); if (fs.length) groups.push({ name:nm, parts:fs.map(fd => ({ fd, rs:pick(fd, nm) })) }); });
+  const body = groups.map(g => { const span = sum(g.parts.map(pt => Math.max(1, pt.rs.length)));
+    return g.parts.map((pt, pi) => (pt.rs.length ? pt.rs : [null]).map((r, ri) => `<tr>
+      ${pi === 0 && ri === 0 ? `<td rowspan="${span}"><b>${g.name}</b></td>` : ''}${ri === 0 ? `<td rowspan="${Math.max(1, pt.rs.length)}">${h(pt.fd)}</td>` : ''}
+      ${r ? `<td class="l"><b>${h(r.team.title)}</b>${r.tie ? ' (동점)' : ''}</td><td>${h(r.team.members)}</td><td class="n">${f(r.rawAvg)}</td><td class="n"><b>${f(conv(r))}</b></td>` : '<td class="l muted">해당 팀 없음</td><td></td><td></td><td></td>'}</tr>`).join('')).join(''); }).join('');
+  const jrow = js.map(x => `<tr><td>${h(jname(x.j.no))}</td><td class="n">${f(x.st.m, 1)}점</td><td class="n">${f(x.st.sd, 1)}점</td><td>${x.st.m === hi.st.m ? '가장 후하게 채점' : x.st.m === lo.st.m ? '가장 엄격하게 채점' : ''}</td></tr>`).join('');
+  const dstr = d => (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(1);
+  const rank = C.ok.concat(C.rows.filter(r => !r.ok));
+  const award = r => r.exc ? '시상 제외' : r.rawAvg == null ? '미집계' : !r.ok ? CUT + '점 미만' : (r.award || '');
+  const rtab = rank.map(r => `<tr class="${r.ok ? '' : 'out'}"><td>${r.ok ? r.rank : '–'}</td><td class="l"><b>${r.team.team_no}. ${h(r.team.title)}</b><div class="muted" style="font-size:9px">${h(r.team.field)}</div></td>
+    ${D.judges.map(j => { const k = r.ent.findIndex(e => e.judge === j.no); if (k < 0) return '<td class="jc">–</td>'; const e = r.ent[k], d = e.raw - C.J[j.no].m, cut = r.zDrop.includes(k);
+      return `<td class="jc">${cut ? `<s>${e.raw}</s>` : `<b>${e.raw}</b>`}<small class="${d >= 0 ? 'up' : 'dn'}">${dstr(d)}</small></td>`; }).join('')}
+    <td class="n">${f(r.rawAvg)}<div class="muted" style="font-size:9px">${r.ok ? rawRank[r.team.team_no] + '위' : ''}</div></td><td class="n"><b>${f(conv(r))}</b><div class="muted" style="font-size:9px">(Z ${f(r.zAvg, 3)})</div></td><td>${award(r)}</td></tr>`).join('');
+  const diff = C.ok.filter(r => rawRank[r.team.team_no] !== r.rank);
+  const sn = no => jname(no).replace(/\(.*$/, '');
+  const why = diff.map(r => { const kept = r.ent.filter((e, k) => !r.zDrop.includes(k)), rawK = mean(kept.map(e => e.raw)), base = mean(kept.map(e => C.J[e.judge].m)), d = rawK - base;
+    return `<li><b>${r.team.team_no}. ${h(r.team.title)}</b> — 원점수 평균 ${f(r.rawAvg)}점(${rawRank[r.team.team_no]}위), 최종 ${r.rank}위. 점수가 반영된 위원(${kept.map(e => sn(e.judge)).join('·')})의 평소 평균은 ${f(base, 1)}점인데 이 사례는 ${f(rawK, 1)}점을 받아, 위원들의 평소 수준보다 <b>${dstr(d)}점 ${d >= 0 ? '높게' : '낮게'}</b> 평가되었습니다.</li>`; }).join('');
+  const ns = D.nosubTeams.length ? `<div class="note2">※ 미제출 사례(${D.nosubTeams.map(t => t.team_no + '번').join(', ')})는 심사 대상에서 제외되었습니다.</div>` : '';
+  return `<div class="easy">
+    <section class="ppage">
+      <h1>2026년 AX 교육·행정혁신 우수사례 육성 프로그램 심사 결과</h1>
+      <div class="sub">출력 일시 ${new Date().toLocaleString('ko-KR')} · ${C.complete ? '확정(모든 위원 전송)' : '잠정(미전송 위원 있음)'} · 심사위원 ${D.judges.length}명</div>
+      <h2>1. 시상 결과</h2>
+      <table class="t"><thead><tr><th>구분</th><th>지원분야</th><th>수상팀</th><th>수상인원</th><th class="n">원점수 평균</th><th class="n">환산점수 평균</th></tr></thead><tbody>${body}</tbody></table>
+      <h2>2. 위원별 채점 성향 (평균 점수가 위원마다 이렇게 다릅니다)</h2>
+      <table class="t" style="width:70%"><thead><tr><th>심사위원</th><th class="n">평균 점수</th><th class="n">점수 편차</th><th>성향</th></tr></thead><tbody>${jrow}</tbody></table>
+      <div class="why"><b>점수는 이렇게 계산했습니다</b><ol>
+        <li><b>원점수</b>: 위원 한 명이 한 사례에 매긴 100점 만점 점수입니다.</li>
+        <li><b>위원마다 채점 성향이 다릅니다.</b> 이번 심사에서 평균이 가장 높은 위원은 ${f(hi.st.m, 1)}점, 가장 낮은 위원은 ${f(lo.st.m, 1)}점으로 ${f(hi.st.m - lo.st.m, 1)}점 차이가 났습니다. 같은 80점이라도 후한 위원에게는 보통 점수이고 엄격한 위원에게는 매우 높은 점수입니다.</li>
+        <li><b>그래서 각 위원의 평소 수준을 기준으로 맞춰 비교합니다(환산).</b> 위원이 자기 평균보다 얼마나 높게(또는 낮게) 평가했는지를 점수 눈금으로 바꾼 값이 환산점수이며, 학술적으로는 Z점수 평균과 같은 순서입니다.</li>
+        <li>사례별로 위원 점수 중 <b>최고와 최저를 하나씩 빼고 평균</b>을 내어 특정 위원의 치우친 평가를 줄입니다. <b>순위는 환산점수 평균이 높은 순서</b>이며, 원점수 평균은 참고 값입니다.</li>
+        <li>시상 대상은 원점수 평균 ${CUT}점 이상인 사례입니다. 대상은 전체 순위, 우수상·장려상은 대상 수상팀을 뺀 분야별 순위로 정했습니다.</li></ol></div>
+      ${ns}
+    </section>
+    <section class="ppage">
+      <h2>3. 전체 순위와 위원별 점수</h2>
+      <table class="t rk"><colgroup><col style="width:4%"><col style="width:29%">${D.judges.map(() => '<col style="width:7.3%">').join('')}<col style="width:8%"><col style="width:9%"><col style="width:6.5%"></colgroup><thead><tr><th>순위</th><th>사례</th>${D.judges.map(j => `<th class="jc">${h(jname(j.no).replace(/\(.*$/, ''))}<small>평균 ${C.J[j.no].n ? f(C.J[j.no].m, 1) : '–'}</small></th>`).join('')}<th class="n">원점수 평균</th><th class="n">환산점수 평균</th><th>시상</th></tr></thead><tbody>${rtab}</tbody></table>
+      <div class="note2">※ 위원 칸의 큰 숫자는 받은 점수, 아래 작은 숫자는 그 위원의 평소 평균과의 차이(점)입니다. <s>취소선</s> 점수는 최고·최저로 제외된 값입니다. 환산점수 평균 = 전체 평균 ${f(M, 1)}점 + 전체 편차 ${f(SD, 1)} × Z점수 평균.</div>
+      ${diff.length ? `<h2>4. 원점수 평균 순서와 최종 순위가 다른 사례</h2>
+      <div class="note2" style="font-size:10.5px">후한 위원의 점수가 많이 반영된 사례는 원점수 평균이 높게 나오고, 엄격한 위원에게서 받은 점수가 반영된 사례는 낮게 나옵니다. 그래서 위원의 평소 평균 대비 얼마나 높게 평가받았는지(+점수)로 비교해 순위를 정했습니다.</div>
+      <ul class="ex">${why}</ul>` : ''}
+    </section>
+  </div>`;
+}
+function printResult(withDet, easy) {
   const title = document.title, C = compute();
-  document.title = `AX우수사례_심사결과${withDet ? '_사례별상세' : ''}_${stamp()}${C.complete ? '' : '_잠정'}`;
+  document.title = `AX우수사례_심사결과${easy ? '_쉬운설명' : withDet ? '_사례별상세' : ''}_${stamp()}${C.complete ? '' : '_잠정'}`;
   let doc = null;
-  if (withDet) {
-    doc = document.createElement('div'); doc.id = 'printdoc'; doc.innerHTML = printDoc(C);
+  if (withDet || easy) {
+    doc = document.createElement('div'); doc.id = 'printdoc'; doc.innerHTML = easy ? easyDoc(C) : printDoc(C);
     document.body.appendChild(doc); document.body.classList.add('print-det');
   }
   const done = () => {
