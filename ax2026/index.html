@@ -223,6 +223,11 @@ a.shr-title:hover,button.shr-title:hover{text-decoration:underline}
 .shr-sub{display:flex;flex-direction:column;gap:6px;min-width:150px;border-left:1px solid var(--hair);padding-left:16px}
 .shr-sub small{font-size:11.5px;color:var(--mute)}
 .shr-sub .btn{justify-content:flex-start}
+.shr.win{border-color:var(--pine);box-shadow:inset 4px 0 0 var(--pine)}
+.shr-prize{display:inline-block;font-size:13px;font-weight:700;border-radius:6px;padding:2px 10px;margin-right:8px;vertical-align:3px;color:#fff;letter-spacing:.02em}
+.shr-prize.p0{background:#A63A2B}.shr-prize.p1{background:#2C5A50}.shr-prize.p2{background:#B08A3E}
+.shr-win{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px;padding:12px 16px;background:var(--sheet);border:1px solid var(--hair);border-radius:10px}
+.shr-win b{font-size:14px}.shr-win span{font-size:13.5px;color:var(--ink2)}
 .shr.ns{opacity:.55}.shr.ns .shr-title{color:var(--mute);text-decoration:line-through}
 @media (max-width:760px){ .shr{grid-template-columns:36px 1fr}.shr-sub{grid-column:1/-1;border-left:0;padding-left:0;flex-direction:row;flex-wrap:wrap;align-items:center;border-top:1px solid var(--hair);padding-top:10px} }
 /* PDF 저장: 사례마다 A4 세로 한 쪽. 의견이 많으면 글자 크기를 줄여 한 쪽에 맞춤(--cf는 인쇄 직전 계산). body.pfit은 크기를 재는 동안만 붙음 */
@@ -782,7 +787,8 @@ const Mock = (() => {
     const db = load(); let out;
     if (fn === 'jd_judge_names') out = db.judges.filter(x => x.no > 0).map(x => ({ no:x.no, name:x.name }));
     else if (fn === 'jd_login') out =auth(db, a.p_judge, a.p_code) ? payload(db, a.p_judge) : err('접속코드가 맞지 않습니다.');
-    else if (fn === 'jd_share_open') out = auth(db, -2, a.p_token) ? Object.assign(viewerPayload(db), { judge:{ no:-2, name:'열람' } }) : err('사용할 수 없는 링크입니다. 링크가 바뀌었거나 중지되었을 수 있습니다.');
+    else if (fn === 'jd_share_open') out = auth(db, -2, a.p_token) ? Object.assign(viewerPayload(db), { judge:{ no:-2, name:'열람' }, prizes:(db.share && db.share.prizes) || {} }) : err('사용할 수 없는 링크입니다. 링크가 바뀌었거나 중지되었을 수 있습니다.');
+    else if (fn === 'jd_share_set_prizes') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (db.share = db.share || { token:null, enabled:false }, db.share.prizes = a.p_prizes, db.share.prizes_at = a.p_prizes ? new Date().toISOString() : null, { prizes_at:db.share.prizes_at, prizes_n:Object.keys(a.p_prizes || {}).length });
     else if (fn === 'jd_share_admin') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mShare(db, a.p_action);
     else if (fn === 'jd_viewer_login') out = auth(db, -1, a.p_code) ? viewerPayload(db) : err('접속코드가 맞지 않습니다.');
     else if (fn === 'jd_viewer_admin') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mViewer(db, a.p_action);
@@ -819,7 +825,7 @@ const Mock = (() => {
   function mShare(db, action) {
     if (action === 'issue') { let t = ''; for (let k = 0; k < 36; k++) t += '0123456789abcdef'[Math.floor(Math.random() * 16)]; db.share = { token:t, enabled:true }; }
     else if (action === 'off' && db.share) db.share.enabled = false;
-    return db.share || { token:null, enabled:false };
+    return Object.assign({ prizes_n:Object.keys((db.share && db.share.prizes) || {}).length }, db.share || { token:null, enabled:false });
   }
   function mViewer(db, action) {
     if (action === 'issue') {
@@ -1360,7 +1366,8 @@ async function renderShare(token) {
     const inst = zf ? `<div class="shr-inst">⚠ ${kind === 'zip' ? '이 시제품은 웹에서 바로 열리지 않는 <b>프로그램(ZIP)</b>입니다. 다운로드 후 설치·실행해야 합니다.' : '설치형(ZIP)은 웹에서 바로 열리지 않으며, 다운로드 후 설치·실행해야 합니다.'}</div>` : '';
     const acct = am === 'account' ? `<div class="shr-acct"><b>시제품 로그인 계정</b>${t.demo_id ? `아이디 <code>${h(t.demo_id)}</code><button type="button" class="btn xs" data-cp="${no}|id">복사</button>` : ''}${t.demo_pw ? `비밀번호 <code>${h(t.demo_pw)}</code><button type="button" class="btn xs" data-cp="${no}|pw">복사</button>` : ''}${t.demo_note ? `<span>${h(t.demo_note)}</span>` : ''}</div>`
       : am ? `<div class="shr-acct"><span class="badge b-ok">${MODE_LABEL[am]}</span><span>${MODE_TEXT[am] || ''}</span>${t.demo_note ? `<span>${h(t.demo_note)}</span>` : ''}</div>` : '';
-    return `<div class="shr"><span class="no">${no}</span><div><div class="shr-th">${h(t.field)} · ${h(t.theme)}</div>${title}${who}${others ? `<div class="shr-opt">다른 방식 ${others}</div>` : ''}${inst}${acct}</div>
+    const pz = (D.prizes || {})[no], pcls = { '대상':'p0', '우수상':'p1', '장려상':'p2' }[pz];
+    return `<div class="shr ${pz ? 'win' : ''}"><span class="no">${no}</span><div><div class="shr-th">${h(t.field)} · ${h(t.theme)}</div>${pz ? `<span class="shr-prize ${pcls}">${h(pz)}</span>` : ''}${title}${who}${others ? `<div class="shr-opt">다른 방식 ${others}</div>` : ''}${inst}${acct}</div>
       <div class="shr-sub"><small>참고 자료</small>
         ${pdf ? `<button type="button" class="btn sm" data-a="rep" data-t="${no}">결과보고서${pdf.pages ? ` (${pdf.pages}쪽)` : ''}</button>${pgOver(pdf) ? `<small style="color:var(--warn)">${PDF_LIMIT}쪽 초과 · ${PDF_LIMIT + 1}쪽부터 음영</small>` : ''}` : '<span class="muted tiny">결과보고서 미등록</span>'}
         ${t.video_url ? `<a class="btn sm" href="${h(t.video_url)}" target="_blank" rel="noopener">시연 영상 ↗</a>` : '<span class="muted tiny">시연 영상 미등록</span>'}</div></div>`;
@@ -1369,6 +1376,7 @@ async function renderShare(token) {
     <div class="shr-head"><h1>2026 AX 교육·행정혁신 우수사례 제출 자료</h1>
       <p>사례 제목을 누르면 <b>시제품</b>이 바로 열립니다. 결과보고서와 시연 영상은 <b>참고 자료</b> 버튼으로 확인합니다.</p>
       <div class="shr-leg"><span><b>제목 클릭</b> = 시제품 열기</span><span><b>참고 자료 버튼</b> = 결과보고서·시연 영상</span><span><b>다운로드형</b>은 설치 후 실행 필요</span></div></div>
+    ${Object.keys(D.prizes || {}).length ? `<div class="shr-win"><b>수상 결과</b>${['대상', '우수상', '장려상'].map(nm => { const l = D.allTeams.filter(t => D.prizes[t.team_no] === nm); return l.length ? `<span><b style="color:${({ '대상':'#A63A2B', '우수상':'#2C5A50', '장려상':'#8A6A22' })[nm]}">${nm}</b> ${l.map(t => `${t.team_no}번 ${h(t.title)}`).join(' / ')}</span>` : ''; }).join('')}</div>` : ''}
     ${fields.map(fd => `<div class="grp">${h(fd)} <span class="badge">${D.allTeams.filter(t => t.field === fd).length}개 사례</span></div>
       <div class="shr-list">${D.allTeams.filter(t => t.field === fd).map(row).join('')}</div>`).join('')}
     <div style="height:40px"></div></div>`;
@@ -2030,7 +2038,10 @@ function paneJudges() {
       <div id="shrow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
         <input class="inp" id="shurl" readonly style="flex:1;min-width:260px" placeholder="아직 링크가 없습니다. ‘링크 만들기’를 누르세요.">
         <button class="btn sm" id="shcp" hidden>링크 복사</button><a class="btn sm" id="shop" target="_blank" rel="noopener" hidden>열어 보기</a>
-        <button class="btn sm" id="shgo" disabled>링크 만들기</button><button class="btn sm danger" id="shoff" hidden>사용 중지</button></div></div>`;
+        <button class="btn sm" id="shgo" disabled>링크 만들기</button><button class="btn sm danger" id="shoff" hidden>사용 중지</button></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--hair)">
+        <b style="font-size:13.5px">수상 결과 표시</b><span class="muted tiny" id="shpz" style="flex:1;min-width:220px">상격(대상·우수상·장려상)만 링크 화면에 표시합니다. 점수·순위는 보이지 않습니다.</span>
+        <button class="btn sm pri" id="shpa">수상 결과 반영</button><button class="btn sm" id="shpx" hidden>표시 해제</button></div></div>`;
   let vcode = null, vhas = false;
   const vpaint = () => {
     $('#vwst').className = 'badge ' + (vhas ? 'b-ok' : 'b-none'); $('#vwst').textContent = vhas ? '발급됨' : '미발급';
@@ -2041,13 +2052,27 @@ function paneJudges() {
     .catch(() => { $('#vwst').textContent = '사용 준비 안 됨'; });
   let shl = { token:null, enabled:false };
   const shUrl = () => SITE_URL + '#/open/' + shl.token;
+  const prizeNow = () => { const C = compute(), o = {}; C.rows.forEach(r => { if (r.award) o[r.team.team_no] = r.award; }); return { C, o }; };
   const shpaint = () => {
+    $('#shpz').textContent = shl.prizes_n ? `링크 화면에 수상 ${shl.prizes_n}팀 표시 중 (반영 ${new Date(shl.prizes_at).toLocaleString('ko-KR')}). 심사 결과가 바뀌면 다시 반영하세요.` : '상격(대상·우수상·장려상)만 링크 화면에 표시합니다. 점수·순위는 보이지 않습니다.';
+    $('#shpa').textContent = shl.prizes_n ? '다시 반영' : '수상 결과 반영'; $('#shpx').hidden = !shl.prizes_n;
     const on = !!(shl.token && shl.enabled);
     $('#shst').className = 'badge ' + (on ? 'b-ok' : 'b-none'); $('#shst').textContent = on ? '사용 중' : shl.token ? '중지됨' : '미생성';
     $('#shurl').value = shl.token ? shUrl() : ''; $('#shgo').disabled = false; $('#shgo').textContent = shl.token ? '링크 재생성' : '링크 만들기';
     $('#shcp').hidden = !on; $('#shop').hidden = !on; $('#shoff').hidden = !on; if (on) $('#shop').href = shUrl();
   };
   rpc('jd_share_admin', { p_code:S.code, p_action:'view' }).then(r => { shl = r || shl; shpaint(); }).catch(() => { $('#shst').textContent = '사용 준비 안 됨'; });
+  $('#shpa').onclick = async () => {
+    const { C, o } = prizeNow(), n = Object.keys(o).length;
+    if (!n) return toast('표시할 수상 결과가 없습니다. 심사 결과를 먼저 확인하세요.');
+    const warn = [!C.complete ? '모든 위원이 결과를 전송하지 않은 <b>잠정</b> 결과입니다.' : '', C.ok.some(r => r.tie && r.award) ? '시상 경계에 <b>동점</b>이 있습니다.' : ''].filter(Boolean).join('<br>');
+    if (!await confirmBox('수상 결과 반영', `링크 화면에 아래 ${n}팀의 상격을 표시합니다.<ul style="margin:8px 0 0 18px;padding:0">${C.ok.filter(r => r.award).map(r => `<li>${r.award} · ${r.team.team_no}번 ${h(r.team.title)}</li>`).join('')}</ul>${warn ? `<p style="color:var(--warn);margin:10px 0 0">${warn}</p>` : ''}`, '반영')) return;
+    try { Object.assign(shl, await rpc('jd_share_set_prizes', { p_code:S.code, p_prizes:o })); shpaint(); toast('수상 결과를 링크 화면에 반영했습니다.'); } catch (e) { toast(e.message); }
+  };
+  $('#shpx').onclick = async () => {
+    if (!await confirmBox('수상 표시 해제', '링크 화면에서 수상 표시를 모두 지웁니다.', '해제')) return;
+    try { Object.assign(shl, await rpc('jd_share_set_prizes', { p_code:S.code, p_prizes:null })); shl.prizes_n = 0; shpaint(); toast('수상 표시를 해제했습니다.'); } catch (e) { toast(e.message); }
+  };
   $('#shcp').onclick = async () => toast(await copyText(shUrl()) ? '링크를 복사했습니다.' : '복사하지 못했습니다. 직접 선택해 복사하세요.');
   $('#shgo').onclick = async () => {
     if (shl.token && !await confirmBox('링크 재생성', '기존 링크는 즉시 쓸 수 없게 됩니다. 이미 링크를 받은 분께 새 링크를 다시 전달해야 합니다.', '재생성')) return;
