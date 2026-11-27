@@ -786,11 +786,13 @@ const Mock = (() => {
   function call(fn, a) {
     const db = load(); let out;
     if (fn === 'jd_judge_names') out = db.judges.filter(x => x.no > 0).map(x => ({ no:x.no, name:x.name }));
-    else if (fn === 'jd_login') out =auth(db, a.p_judge, a.p_code) ? payload(db, a.p_judge) : err('접속코드가 맞지 않습니다.');
-    else if (fn === 'jd_share_open') out = auth(db, -2, a.p_token) ? Object.assign(viewerPayload(db), { judge:{ no:-2, name:'열람' }, prizes:(db.share && db.share.prizes) || {} }) : err('사용할 수 없는 링크입니다. 링크가 바뀌었거나 중지되었을 수 있습니다.');
+    else if (fn === 'jd_login') out =auth(db, a.p_judge, a.p_code) ? (a.p_judge > 0 && mLog(db, a.p_judge), payload(db, a.p_judge)) : err('접속코드가 맞지 않습니다.');
+    else if (fn === 'jd_access_stats') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mAccess(db, a);
+    else if (fn === 'jd_access_reset') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (db.access = [], { ok:true });
+    else if (fn === 'jd_share_open') out = auth(db, -2, a.p_token) ? (mLog(db, -2), Object.assign(viewerPayload(db), { judge:{ no:-2, name:'열람' }, prizes:(db.share && db.share.prizes) || {} })) : err('사용할 수 없는 링크입니다. 링크가 바뀌었거나 중지되었을 수 있습니다.');
     else if (fn === 'jd_share_set_prizes') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : (db.share = db.share || { token:null, enabled:false }, db.share.prizes = a.p_prizes, db.share.prizes_at = a.p_prizes ? new Date().toISOString() : null, { prizes_at:db.share.prizes_at, prizes_n:Object.keys(a.p_prizes || {}).length });
     else if (fn === 'jd_share_admin') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mShare(db, a.p_action);
-    else if (fn === 'jd_viewer_login') out = auth(db, -1, a.p_code) ? viewerPayload(db) : err('접속코드가 맞지 않습니다.');
+    else if (fn === 'jd_viewer_login') out = auth(db, -1, a.p_code) ? (mLog(db, -1), viewerPayload(db)) : err('접속코드가 맞지 않습니다.');
     else if (fn === 'jd_viewer_admin') out = !auth(db, 0, a.p_code) ? err('관리자 접속코드가 맞지 않습니다.') : mViewer(db, a.p_action);
     else if (fn === 'jd_save') out = mSave(db, a);
     else if (fn === 'jd_admin') out = mAdmin(db, a);
@@ -815,6 +817,14 @@ const Mock = (() => {
     else out = err('알 수 없는 요청입니다.');
     save(db);
     return new Promise((res, rej) => setTimeout(() => out.error ? rej(new Error(out.error)) : res(JSON.parse(JSON.stringify(out))), 120));
+  }
+  function mLog(db, who) { (db.access = db.access || []).push({ who, at: new Date().toISOString() }); }
+  function mAccess(db, a) {
+    const L = db.access || [], f = a.p_from ? +new Date(a.p_from) : -Infinity, t = a.p_to ? +new Date(a.p_to) : Infinity, by = {};
+    L.forEach(x => { const r = by[x.who] = by[x.who] || { who:x.who, cnt:0, last_at:null, all_cnt:0, all_last:null }, ts = +new Date(x.at);
+      r.all_cnt++; if (!r.all_last || x.at > r.all_last) r.all_last = x.at;
+      if (ts >= f && ts < t) { r.cnt++; if (!r.last_at || x.at > r.last_at) r.last_at = x.at; } });
+    return { since: L.length ? L.map(x => x.at).sort()[0] : null, rows: Object.values(by) };
   }
   function viewerPayload(db) {
     return { judge:{ no:-1, name:'열람자' }, closed:db.closed, teams:db.teams, excluded:[], sent:[], scores:[],
@@ -1973,7 +1983,17 @@ function paneJudges() {
         <button class="btn sm" id="shgo" disabled>링크 만들기</button><button class="btn sm danger" id="shoff" hidden>사용 중지</button></div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--hair)">
         <b style="font-size:13.5px">수상 결과 표시</b><span class="muted tiny" id="shpz" style="flex:1;min-width:220px">상격(대상·우수상·장려상)만 링크 화면에 표시합니다. 점수·순위는 보이지 않습니다.</span>
-        <button class="btn sm pri" id="shpa">수상 결과 반영</button><button class="btn sm" id="shpx" hidden>표시 해제</button></div></div>`;
+        <button class="btn sm pri" id="shpa">수상 결과 반영</button><button class="btn sm" id="shpx" hidden>표시 해제</button></div></div>
+    <div class="card pad" id="accard" style="margin-top:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>접속 현황</b><span class="muted tiny">심사위원·열람자·공개 열람 링크가 몇 번, 언제 마지막으로 접속했는지 보여 줍니다. 접속은 로그인·링크 열기 1회이며 새로고침도 1회로 셉니다(관리자 접속은 제외).</span></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <b style="font-size:13.5px">열람 기간</b>
+        <input type="date" class="inp" id="acf" style="width:auto"><span>~</span><input type="date" class="inp" id="act" style="width:auto">
+        <button class="btn sm" id="ac0">전체</button><button class="btn sm" id="ac1">오늘</button><button class="btn sm" id="ac7">최근 7일</button>
+        <span class="sp" style="flex:1"></span><button class="btn sm" id="acrf">새로고침</button><button class="btn sm danger" id="acrs">기록 지우기</button></div>
+      <div class="tbl-wrap" style="margin-top:10px"><table class="t"><thead><tr><th>구분</th><th class="c" id="acth">선택 기간 접속 횟수</th><th class="c">선택 기간 마지막 접속</th><th class="c">전체 누적 횟수</th><th class="c">전체 마지막 접속</th></tr></thead>
+        <tbody id="actb"><tr><td colspan="5" class="muted">불러오는 중…</td></tr></tbody></table></div>
+      <div class="tiny muted" id="acsn" style="margin-top:6px"></div></div>`;
   let vcode = null, vhas = false;
   const vpaint = () => {
     $('#vwst').className = 'badge ' + (vhas ? 'b-ok' : 'b-none'); $('#vwst').textContent = vhas ? '발급됨' : '미발급';
@@ -2083,6 +2103,31 @@ function paneJudges() {
     await p;
   });
   bindUnsend();
+  // 접속 현황: 선택한 기간(날짜 기준, 내 컴퓨터 시간)의 횟수·마지막 접속, 전체 누적
+  const dstr = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const dtm = s => s ? new Date(s).toLocaleString('ko-KR') : '—';
+  const acLoad = async () => {
+    const f = $('#acf').value, t = $('#act').value;
+    if (f && t && f > t) return toast('시작일이 종료일보다 늦습니다.');
+    const args = { p_code:S.code, p_from: f ? new Date(f + 'T00:00:00').toISOString() : null, p_to: t ? new Date(new Date(t + 'T00:00:00').getTime() + 864e5).toISOString() : null };
+    try {
+      const r = await rpc('jd_access_stats', args), by = {}; (r.rows || []).forEach(x => by[x.who] = x);
+      const ids = [1, 2, 3, 4, 5, 6, -1, -2], nm = w => w > 0 ? jname(w) : w === -1 ? '열람자' : '공개 열람 링크';
+      $('#acth').textContent = f || t ? `접속 횟수 (${f || '처음'} ~ ${t || '지금'})` : '선택 기간 접속 횟수';
+      $('#actb').innerHTML = ids.map(w => { const x = by[w] || {}; return `<tr><td>${h(nm(w))}</td><td class="c"><b>${x.cnt || 0}</b>회</td><td class="c">${dtm(x.last_at)}</td><td class="c">${x.all_cnt || 0}회</td><td class="c">${dtm(x.all_last)}</td></tr>`; }).join('');
+      $('#acsn').textContent = r.since ? `기록 시작: ${dtm(r.since)}. 기록 이전의 접속은 알 수 없습니다.` : '아직 기록된 접속이 없습니다.';
+    } catch (e) { $('#actb').innerHTML = `<tr><td colspan="5" class="err">${h(e.message)}</td></tr>`; }
+  };
+  const acSet = (a, b) => { $('#acf').value = a; $('#act').value = b; acLoad(); };
+  $('#ac0').onclick = () => acSet('', '');
+  $('#ac1').onclick = () => { const d = dstr(new Date()); acSet(d, d); };
+  $('#ac7').onclick = () => acSet(dstr(new Date(Date.now() - 6 * 864e5)), dstr(new Date()));
+  $('#acf').onchange = $('#act').onchange = acLoad; $('#acrf').onclick = acLoad;
+  $('#acrs').onclick = async () => {
+    if (!await confirmBox('접속 기록 지우기', '지금까지 쌓인 접속 횟수와 시각 기록을 모두 지웁니다(심사 점수·자료는 그대로). 시험 접속을 정리할 때 쓰세요. 되돌릴 수 없습니다.', '지우기', 'danger')) return;
+    try { await rpc('jd_access_reset', { p_code:S.code }); toast('접속 기록을 지웠습니다.'); acLoad(); } catch (e) { toast(e.message); }
+  };
+  acLoad();
 }
 // 열람자에게 보내는 접속 안내문
 function viewerGuideText(code) {
